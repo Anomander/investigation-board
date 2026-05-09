@@ -33,6 +33,15 @@ Now you can turn Journal Text pages in Doc Notes (A4 Format)
 
 <img width="1688" height="892" alt="image" src="https://github.com/user-attachments/assets/d16b91cd-e1f2-4067-9b33-93c56a9d2c83" />
 
+## NEW FEATURE >> Inline Edit and Scale + Bounding Box settings
+
+Double click the notes to see their closeup preview, you can edit their text directly on the panel.
+
+In Game Settings >> Investigation Board you can check to display borders around selected notes (this makes the rotate gizmo appear) and activate the option to allow them to be scaled.
+
+<img width="1463" height="935" alt="Screenshot from 2026-05-09 16-49-41" src="https://github.com/user-attachments/assets/f5bec180-be0a-4b4f-828c-508eb1819c60" />
+
+
 
 ## FEATURE >> Investigation Office
 
