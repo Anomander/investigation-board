@@ -1,7 +1,8 @@
 # Plan: Inline Text Editing in Note Previewer
 
-**Target types:** sticky, index, photo (non-futuristic only)  
-**Branch:** v14
+**Target types:** sticky, index, photo  
+**Branch:** v14  
+**Status: IMPLEMENTED** — all code steps are done. Remaining items are testing and a template cleanup.
 
 ---
 
@@ -36,7 +37,8 @@ With:
      style="...">{{text}}</div>
 ```
 
-### photo — `.photo-frame-text` div (non-futuristic only)
+### photo — `.photo-frame-text` div
+
 Replace:
 ```html
 <div class="photo-frame-text {{fontClass}}" style="color: {{textColor}};">
@@ -159,19 +161,18 @@ import { socket, activeGlobalSounds, collaborativeUpdate } from "../utils/socket
 - **No save if unchanged:** guard with `newText === currentText`
 - **Collaborative:** routes through `collaborativeUpdate` — works for non-owners via socket
 - **No full re-render after save:** text already in DOM from user typing; just flash saved indicator. Canvas note re-renders automatically via existing `updateDrawing` hook.
-- **Photo futuristic mode:** `identityName` field is not editable here (different field, different flow). Only `text` field.
 - **Character limits:** Not enforced at input time (matches drawing-sheet behavior). Truncation only happens on canvas sprite render.
 
 ---
 
 ## Steps
 
-1. [ ] Add `collaborativeUpdate` import to `note-previewer.js`
-2. [ ] Add `_bindInlineEditing` and `_saveInlineText` and `_flashSaved` methods
-3. [ ] Call `_bindInlineEditing(html)` in `_onRender`
-4. [ ] Update `note-preview.html` — sticky/index `.preview-text`
-5. [ ] Update `note-preview.html` — photo `.photo-frame-text` (non-futuristic block only)
-6. [ ] Add CSS for editable states and save flash
+1. [x] Add `collaborativeUpdate` import to `note-previewer.js`
+2. [x] Add `_bindInlineEditing` and `_saveInlineText` and `_flashSaved` methods
+3. [x] Call `_bindInlineEditing(html)` in `_onRender`
+4. [x] Update `note-preview.html` — sticky/index `.preview-text`
+5. [x] Update `note-preview.html` — photo `.photo-frame-text`
+6. [x] Add CSS for editable states and save flash
 7. [ ] Test sticky, index, photo (normal mode)
 8. [ ] Test collaborative update as non-owner player
 9. [ ] Test Ctrl+S shortcut

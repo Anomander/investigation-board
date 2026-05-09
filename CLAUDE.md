@@ -12,7 +12,7 @@ Investigation Board is a Foundry VTT module (currently targeting **v14**, Build 
 
 - Seven note types with visual connection lines (yarn-like strings)
 - Collaborative editing via socket routing — all users can edit any note
-- Multiple visual themes (modern, futuristic, custom)
+- Multiple visual themes (modern, custom)
 - Pins render on top of connections via global container z-indexing
 - Resizable handout notes with auto-resize on image selection
 - Clipboard paste to create handout notes
@@ -88,7 +88,7 @@ Registers all Foundry hooks and manages Investigation Board mode:
 Seven note types in `drawing.flags['investigation-board'].type`:
 
 - **sticky** — 200×200, colored tints via `STICKY_TINTS`, ink color via `INK_COLORS`
-- **photo** — 225×290, polaroid layout (or horizontal in futuristic mode)
+- **photo** — 225×290, polaroid layout
 - **index** — 600×400, default fontSize 9
 - **handout** — transparent background, image-only, resizable, `fillAlpha: 0.001`
 - **media** — 400×~296, two sub-modes: **audio** (cassette tape sprite, plays lo-fi audio on click) and **video** (video sprite, opens `VideoPlayer` window on click). Sub-mode stored in `flags.mediaMode` (`"audio"` | `"video"`). Video notes set `pinColor: "none"` automatically (no pin/connections).
@@ -99,8 +99,7 @@ Rendering in `CustomDrawing._updateSprites()`:
 
 1. Check handout type FIRST — completely different sprite layout
 2. Check document type — background sprite + title + HTMLText body; early return
-3. Check futuristic photo notes — horizontal layout
-4. All other types use shared layout logic
+3. All other types use shared layout logic
 
 **Document note sprites** — `bgShadow` (blurred black shadow at offset 8,8), `bgSprite` (background image), `docTitleText` (`PIXI.Text`, centered, hidden when empty), `docBodyText` (`PIXI.HTMLText` with `tagStyles` to lock the note font on every inline tag). Sprites are reused across `_doUpdateSprites()` calls (not destroyed). When a note switches away from type `"document"`, the doc-specific sprites are destroyed in the early type-mismatch block.
 
@@ -144,7 +143,6 @@ flags['investigation-board'] = {
   pinColor: "redPin.webp",            // bare filename; "" or absent = auto-random on next render
                                       // resolved at render time via resolvePinImage() so the folder
                                       // can change without touching note data
-  identityName: "Character Name",      // futuristic photo only
   unknown: true,                       // photo only — shows "???" instead of name
   font: "Arial",                       // per-note, falls back to global (not handout/media/pin)
   fontSize: 16,                        // per-note, index defaults to 9; document defaults to 14 (not handout/media/pin)

@@ -841,7 +841,6 @@ export class CustomDrawing extends Drawing {
 
       // Hide text for media notes on canvas
       if (this.noteText) this.noteText.visible = false;
-      if (this.futuristicText) this.futuristicText.visible = false;
 
       return; // Early exit for media notes
     }
@@ -966,8 +965,6 @@ export class CustomDrawing extends Drawing {
       this.docBodyText.visible = true;
       this.docBodyText.position.set(MARGIN, MARGIN + (titleStr ? titleAreaHeight + 20 : 0));
 
-      if (this.futuristicText) this.futuristicText.visible = false;
-
       return; // Early exit for document notes
     }
 
@@ -995,7 +992,6 @@ export class CustomDrawing extends Drawing {
 
       // Hide text
       if (this.noteText) this.noteText.visible = false;
-      if (this.futuristicText) this.futuristicText.visible = false;
 
       return;
     }
@@ -1072,7 +1068,6 @@ export class CustomDrawing extends Drawing {
 
       // Hide text sprites (handouts don't have text)
       if (this.noteText) this.noteText.visible = false;
-      if (this.futuristicText) this.futuristicText.visible = false;
 
       return; // Early exit for handout notes
     }
@@ -1259,8 +1254,6 @@ export class CustomDrawing extends Drawing {
       this.noteText.position.set(width / 2, isPhoto ? height - 25 : height / 2);
     }
 
-    // Hide futuristic text elements if they exist
-    if (this.futuristicText) this.futuristicText.visible = false;
   }
 
   _getPinPosition() {

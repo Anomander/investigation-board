@@ -4,7 +4,12 @@ This module is free. Wanna do a cool thing?
 
 ---
 
-#### Note: If you're looking for a version that works in v13 this is the one: [IB-4.10.1](https://github.com/mordachai/investigation-board/releases/download/v4.10.1/module.json) (Last Foundry v13 working version)
+#### Note: If you're looking for a version that works in v13 this is the one:
+
+```
+https://github.com/mordachai/investigation-board/releases/download/v4.10.1/module.json
+
+```
 
 ---
 

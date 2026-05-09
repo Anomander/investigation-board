@@ -1,4 +1,4 @@
-<div class="ib-note-preview {{noteType}}-preview {{boardMode}}-mode">
+<div class="ib-note-preview {{noteType}}-preview">
     {{#if (or (eq noteType "photo") (eq noteType "handout") (eq noteType "media"))}}
         <div class="preview-image-container">
             {{#if (eq noteType "photo")}}
@@ -7,17 +7,10 @@
                     <div class="photo-content">
                         <img src="{{image}}" class="user-photo" alt="Note Image" />
                     </div>
-                    
-                    {{#if (ne boardMode "futuristic")}}
-                        <div class="photo-frame-text {{fontClass}} ib-editable-text"
-                             contenteditable="true"
-                             data-field="text"
-                             style="color: {{textColor}};">{{text}}</div>
-                    {{/if}}
-
-                    {{#if (and (eq boardMode "futuristic") identityName)}}
-                        <div class="preview-identity-name futuristic">{{identityName}}</div>
-                    {{/if}}
+                    <div class="photo-frame-text {{fontClass}} ib-editable-text"
+                         contenteditable="true"
+                         data-field="text"
+                         style="color: {{textColor}};">{{text}}</div>
                 </div>
             {{else if (eq noteType "media")}}
                 <div class="media-preview-container">

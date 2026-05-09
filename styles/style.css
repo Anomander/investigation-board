@@ -859,45 +859,6 @@ body.investigation-board-mode .drawing:not([data-investigation-note='true']) {
   font-family: 'IB Special Elite', cursive;
 }
 
-/* Futuristic mode overrides for preview */
-.futuristic-mode.photo-preview {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 20px;
-}
-
-.futuristic-mode.photo-preview .preview-image-container {
-  flex: 0 0 300px;
-  margin-bottom: 0;
-}
-
-.futuristic-mode.photo-preview .preview-text-container {
-  flex: 1;
-  margin-bottom: 0;
-  height: 100%;
-}
-
-.futuristic-mode .photo-content {
-  top: 5%;
-  left: 5%;
-  width: 90%;
-  height: 90%;
-}
-
-.preview-identity-name {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.7);
-  color: #00ffff;
-  padding: 8px;
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  text-align: center;
-  font-size: 1.1em;
-}
 
 /* Media/Cassette Preview Styles */
 .media-preview-container {
