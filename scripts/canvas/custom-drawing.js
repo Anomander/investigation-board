@@ -1054,10 +1054,11 @@ export class CustomDrawing extends Drawing {
           this.photoImageSprite.mask = null;
           if (this.photoMask) this.photoMask.visible = false;
 
-          // Ensure sprite is visible and has correct properties
-          this.photoImageSprite.visible = true;
+          // Respect document.hidden — players never see it, GM gets dimmed via parent alpha (_getTargetAlpha → 0.4)
+          const hiddenForPlayer = this.document.hidden && !game.user.isGM;
+          this.photoImageSprite.visible = !hiddenForPlayer;
           this.photoImageSprite.alpha = 1;
-          this.photoImageSprite.renderable = true;
+          this.photoImageSprite.renderable = !hiddenForPlayer;
         }
       } catch (err) {
         console.error(`Failed to load handout image: ${imagePath}`, err);
