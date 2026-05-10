@@ -21,7 +21,7 @@ A Foundry VTT module that lets everyone create, edit, and move sticky and photo 
 
 ## NEW FEATURE >> Stamps Overlays!
 
-Wanna make your investigators feel they are in power? Let them stamp their notes!
+Wanna make your investigators feel they are in power? Let them stamp their notes! Right click >> Stamp >> Choose it. The stamp will appear below the cursor on the note.
 
 Using the right click menu you can overlay some official looking stamp in Docs from Texts, Handout notes, Index Cards and even Photos. In game settings you can change the folder stamps so you can add your own. Use white .webp images with transparency so you can assign the colors in there too.  
 
