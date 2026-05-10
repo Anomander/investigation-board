@@ -19,6 +19,14 @@ https://github.com/mordachai/investigation-board/releases/download/v4.10.1/modul
 
 A Foundry VTT module that lets everyone create, edit, and move sticky and photo notes on the scene. A must-have for investigative games like City of Mist, Call of Cthulhu, and all your conspiracy adventures.
 
+## NEW FEATURE >> Stamps Overlays!
+
+Wanna make your investigators feel they are in power? Let them stamp their notes!
+
+Using the right click menu you can overlay some official looking stamp in Docs from Texts, Handout notes, Index Cards and even Photos. In game settings you can change the folder stamps so you can add your own. Use white .webp images with transparency so you can assign the colors in there too.  
+
+<img width="1688" height="908" alt="Image" src="https://github.com/user-attachments/assets/48162afa-0e73-424b-b49c-8140e9b27beb" />
+
 ## NEW FEATURE >> Video Notes >> [Check YouTube Video](https://youtu.be/Lvu1c6NTcsU)
 
 Media notes now supports video too! There are some video effects available, and you can select the format of your video fr better immersion: Flat screen 16:9, CRT 4:3 and even Mobile portrait. There is even a timestamp tool so you can add the _when_ to the _who_ and _how_ of you mysteries!
@@ -29,7 +37,7 @@ Media notes now supports video too! There are some video effects available, and 
 
 
 ## NEW FEATURE >> Doc Notes from Journal Texts
-Now you can turn Journal Text pages in Doc Notes (A4 Format)
+Now you can turn Journal Text pages in Doc Notes (A4 Format). Multiple pages are generated if the text is too long.
 
 <img width="1688" height="892" alt="image" src="https://github.com/user-attachments/assets/d16b91cd-e1f2-4067-9b33-93c56a9d2c83" />
 
