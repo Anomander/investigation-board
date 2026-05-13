@@ -109,6 +109,23 @@ export class CustomDrawing extends Drawing {
   }
 
   /**
+   * Override isInteractable to skip Foundry's author-ownership check for IB notes.
+   * Foundry's base getter returns false when document.author !== current user && !isGM,
+   * which causes _refreshState() to set eventMode="none" every tick, blocking player drags.
+   */
+  get isInteractable() {
+    const noteData = this.document.flags?.[MODULE_ID];
+    if (noteData?.type) {
+      if (this.isPreview) return false;
+      if (!this.layer.active) return false;
+      if (!ui.controls.tool?.interaction) return false;
+      if (this.document.locked) return false;
+      return true;
+    }
+    return super.isInteractable;
+  }
+
+  /**
    * Override _getTargetAlpha so Foundry's _refreshState() dims hidden IB notes for the GM.
    * _refreshState() calls this.alpha = this._getTargetAlpha() every render tick, so this is
    * the correct hook point — setting this.alpha manually elsewhere gets overridden each frame.
