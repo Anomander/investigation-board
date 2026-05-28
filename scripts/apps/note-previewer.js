@@ -1,6 +1,7 @@
 import { MODULE_ID, SOCKET_NAME } from "../config.js";
 import { socket, activeGlobalSounds, collaborativeUpdate } from "../utils/socket-handler.js";
 import { applyTapeEffectToElement, applyTapeEffectToSound } from "../utils/audio-utils.js";
+import { openLinkedDocument } from "../utils/helpers.js";
 
 // v13 namespaced imports
 const ApplicationV2 = foundry.applications.api.ApplicationV2;
@@ -257,7 +258,7 @@ export class NotePreviewer extends HandlebarsApplicationMixin(ApplicationV2) {
             const doc = await fromUuid(uuid);
             if (doc) {
               if (doc.testUserPermission(game.user, "LIMITED")) {
-                doc.sheet.render(true);
+                openLinkedDocument(doc);
               } else {
                 ui.notifications.warn(`You do not have permission to view ${doc.name}.`);
               }

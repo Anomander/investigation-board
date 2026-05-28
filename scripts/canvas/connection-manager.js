@@ -318,12 +318,18 @@ export function drawAllConnectionLines(animationOffset = 0) {
     const connections = noteData.connections || [];
     if (connections.length === 0) return;
 
+    // Players must not see yarn from hidden source notes
+    if (drawing.document.hidden && !game.user.isGM) return;
+
     const shouldAnimate = activeEditingDrawingId === drawing.document.id;
     const sourcePin = drawing._getPinPosition ? drawing._getPinPosition() : { x: drawing.document.x, y: drawing.document.y };
 
     connections.forEach(conn => {
       const targetDrawing = canvas.drawings.get(conn.targetId);
       if (!targetDrawing) return;
+
+      // Players must not see yarn pointing to a hidden target note
+      if (targetDrawing.document.hidden && !game.user.isGM) return;
 
       const targetPin = targetDrawing._getPinPosition ? targetDrawing._getPinPosition() : { x: targetDrawing.document.x, y: targetDrawing.document.y };
 

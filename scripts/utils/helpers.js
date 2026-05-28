@@ -215,3 +215,23 @@ export function truncateText(text, font, noteType, fontSize, width, height) {
   const charLimit = _computeCharLimit(font, noteType, fontSize, width, height);
   return text.length <= charLimit ? text : text.slice(0, charLimit).trim() + "...";
 }
+
+/**
+ * Open a linked Foundry document, respecting sheet overrides from modules such
+ * as Monk's Enhanced Journal (MEJ).
+ *
+ * MEJ registers itself as the sheet class for JournalEntry documents.  When a
+ * linkedObject UUID resolves to a JournalEntryPage, calling page.sheet.render()
+ * opens the vanilla page editor instead of MEJ because MEJ does not hook the
+ * JournalEntryPage sheet class.  Routing through the parent JournalEntry sheet
+ * (with pageId forwarded) fixes this transparently.
+ *
+ * @param {Document} doc   A resolved Foundry document (any type).
+ */
+export function openLinkedDocument(doc) {
+  if (doc.documentName === "JournalEntryPage" && doc.parent) {
+    doc.parent.sheet.render(true, { pageId: doc.id });
+  } else {
+    doc.sheet.render(true);
+  }
+}

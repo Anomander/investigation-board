@@ -1,7 +1,7 @@
 import { MODULE_ID, SOCKET_NAME, VIDEO_EXTENSIONS, DOC_BACKGROUNDS } from "../config.js";
 import { InvestigationBoardState } from "../state.js";
 import { collaborativeUpdate, collaborativeDelete, socket, activeGlobalSounds, activeVideoBroadcasts } from "../utils/socket-handler.js";
-import { truncateText, resolvePinImage, getAvailablePinFiles, resolveStampImage, getAvailableStampFiles } from "../utils/helpers.js";
+import { truncateText, resolvePinImage, getAvailablePinFiles, resolveStampImage, getAvailableStampFiles, openLinkedDocument } from "../utils/helpers.js";
 import { NotePreviewer } from "../apps/note-previewer.js";
 import { VideoPlayer } from "../apps/video-player.js";
 import { drawAllConnectionLines } from "./connection-manager.js";
@@ -317,7 +317,7 @@ export class CustomDrawing extends Drawing {
                const doc = await fromUuid(uuid);
                if (doc) {
                  if (doc.testUserPermission(game.user, "LIMITED")) {
-                   doc.sheet.render(true);
+                   openLinkedDocument(doc);
                  } else {
                    ui.notifications.warn(`You do not have permission to view ${doc.name}.`);
                  }
@@ -612,7 +612,7 @@ export class CustomDrawing extends Drawing {
             const doc = await fromUuid(uuid);
             if (doc) {
               if (doc.testUserPermission(game.user, "LIMITED")) {
-                doc.sheet.render(true);
+                openLinkedDocument(doc);
               } else {
                 ui.notifications.warn(`You do not have permission to view ${doc.name}.`);
               }

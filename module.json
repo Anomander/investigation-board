@@ -2,7 +2,7 @@
   "id": "investigation-board",
   "title": "Investigation Board",
   "description": "<p>A Foundry VTT module that lets everyone create, edit, and move sticky and photo notes on the scene as collaborative investigation tools.</p>",
-  "version": "5.7.1",
+  "version": "5.7.1a",
   "socket": true,
   "authors": [
     {
@@ -12,10 +12,12 @@
     }
   ],
   "compatibility": {
-    "minimum": "14",
+    "minimum": "13",
     "verified": "14"
   },
-  "esmodules": ["scripts/main.js"],
+  "esmodules": [
+    "scripts/main.js"
+  ],
   "styles": [
     {
       "src": "styles/style.css"
@@ -38,7 +40,9 @@
       "name": "Investigation Board",
       "sorting": "m",
       "color": "#061f6a",
-      "packs": ["ib-scenes"]
+      "packs": [
+        "ib-scenes"
+      ]
     }
   ],
   "url": "https://github.com/mordachai/investigation-board",
