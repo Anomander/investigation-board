@@ -269,10 +269,10 @@ export function updatePins() {
       drawing.pinSprite.removeAllListeners();
       drawing.pinSprite.on('pointerdown', (event) => {
         if (event.button === 2 && InvestigationBoardState.isActive && noteData?.type === "pin") {
-          // Pin-only notes: right-click opens the convert/manage context menu.
-          // For all other note types, right-click falls through to onPinPointerDown which
-          // starts connection mode; the subsequent rightclick event on canvas then triggers
-          // onCanvasRightClick and shows the "create connected note" menu.
+          // Right-click on a standalone pin: open the context menu.
+          // _showContextMenu synchronously cancels connection mode (resetPinConnectionState)
+          // before its first await, which removes the stage-level onCanvasRightClick listener
+          // before pointerup/rightclick can fire it. The Create-note menu never appears.
           event.stopPropagation();
           drawing._showContextMenu(event);
           return;
@@ -874,6 +874,24 @@ export function resetPinConnectionState() {
   // Cleanup stage listeners
   canvas.stage.off('click', onCanvasClick);
   canvas.stage.off('rightclick', onCanvasRightClick);
+}
+
+/**
+ * Returns true when a yarn connection is currently being drawn (first pin selected).
+ * Used by the keybinding handler to decide whether to consume the Escape key.
+ */
+export function isInConnectionMode() {
+  return pinConnectionFirstNote !== null;
+}
+
+/**
+ * Start connection-creation mode from a given drawing programmatically —
+ * equivalent to a user clicking that note's pin.  Safe to call from context menus.
+ * @param {CustomDrawing} drawing
+ */
+export function beginConnectionFrom(drawing) {
+  if (!InvestigationBoardState.isActive) return;
+  _startConnectionMode(drawing);
 }
 
 export function cleanupConnectionLines() {

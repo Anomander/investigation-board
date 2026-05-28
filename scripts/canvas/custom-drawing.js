@@ -4,7 +4,7 @@ import { collaborativeUpdate, collaborativeDelete, socket, activeGlobalSounds, a
 import { truncateText, resolvePinImage, getAvailablePinFiles, resolveStampImage, getAvailableStampFiles } from "../utils/helpers.js";
 import { NotePreviewer } from "../apps/note-previewer.js";
 import { VideoPlayer } from "../apps/video-player.js";
-import { drawAllConnectionLines } from "./connection-manager.js";
+import { drawAllConnectionLines, beginConnectionFrom, resetPinConnectionState } from "./connection-manager.js";
 
 // v13 namespaced imports
 const Drawing = foundry.canvas.placeables.Drawing;
@@ -258,7 +258,7 @@ export class CustomDrawing extends Drawing {
   /**
    * Show a custom context menu at the mouse position.
    */
-  _showContextMenu(event) {
+  async _showContextMenu(event) {
     const noteData = this.document.flags?.[MODULE_ID];
     if (!noteData) return;
 
@@ -293,118 +293,262 @@ export class CustomDrawing extends Drawing {
     menu.style.zIndex = '10000';
 
     if (noteData.type === "pin") {
-       // Edit option — kept for potential future use
-       // const editOption = document.createElement('div');
-       // editOption.innerHTML = '<i class="fas fa-edit"></i> Edit';
-       // editOption.classList.add('ib-context-menu-item');
-       // editOption.onclick = (e) => {
-       //   e.stopPropagation();
-       //   this.document.sheet.render(true);
-       //   menu.remove();
-       // };
+      // Cancel any in-progress connection SYNCHRONOUSLY, before the first await below.
+      // This removes the stage-level onCanvasRightClick listener before pointerup fires,
+      // so the "Create connected note" menu can never appear on top of ours.
+      resetPinConnectionState();
 
-       if (noteData.linkedObject) {
-         const linkMatch = noteData.linkedObject.match(/\[([^\]]+)\]/);
-         if (linkMatch) {
-           const uuid = linkMatch[1];
-           const linkOption = document.createElement('div');
-           linkOption.innerHTML = `<i class="fas fa-link"></i> Open`;
-           linkOption.classList.add('ib-context-menu-item');
-           linkOption.onclick = async (e) => {
-             e.stopPropagation();
-             menu.remove();
-             try {
-               const doc = await fromUuid(uuid);
-               if (doc) {
-                 if (doc.testUserPermission(game.user, "LIMITED")) {
-                   doc.sheet.render(true);
-                 } else {
-                   ui.notifications.warn(`You do not have permission to view ${doc.name}.`);
-                 }
-               } else {
-                 ui.notifications.warn(`Could not find linked document.`);
-               }
-             } catch (err) {
-               console.error("Investigation Board: Error opening linked document from menu", err);
-             }
-           };
-           menu.appendChild(linkOption);
-         }
-       }
+      const self = this;
+      const noteId = this.document.id;
 
-       // Convert-to options
-       const convertTypes = [
-         { id: 'sticky',  label: 'Sticky Note',  icon: 'fas fa-sticky-note' },
-         { id: 'photo',   label: 'Photo Note',   icon: 'fa-solid fa-camera-polaroid' },
-         { id: 'index',   label: 'Index Card',   icon: 'fa-regular fa-subtitles' },
-         { id: 'handout', label: 'Handout',      icon: 'fas fa-image' },
-         { id: 'media',   label: 'Media Note',   icon: 'fas fa-cassette-tape' },
-       ];
-       convertTypes.forEach(ct => {
-         const convertOption = document.createElement('div');
-         convertOption.innerHTML = `<i class="${ct.icon}"></i> Convert to ${ct.label}`;
-         convertOption.classList.add('ib-context-menu-item');
-         convertOption.onclick = (e) => {
-           e.stopPropagation();
-           menu.remove();
-           this._convertToNoteType(ct.id);
-         };
-         menu.appendChild(convertOption);
-       });
+      // --- Linked object "Open" option ---
+      if (noteData.linkedObject) {
+        const linkMatch = noteData.linkedObject.match(/\[([^\]]+)\]/);
+        if (linkMatch) {
+          const uuid = linkMatch[1];
+          const linkOption = document.createElement('div');
+          linkOption.innerHTML = `<i class="fas fa-link"></i> Open`;
+          linkOption.classList.add('ib-context-menu-item');
+          linkOption.onclick = async (e) => {
+            e.stopPropagation();
+            menu.remove();
+            try {
+              const doc = await fromUuid(uuid);
+              if (doc) {
+                if (doc.testUserPermission(game.user, "LIMITED")) doc.sheet.render(true);
+                else ui.notifications.warn("You do not have permission to view this document.");
+              } else {
+                ui.notifications.warn("Could not find linked document.");
+              }
+            } catch (err) {
+              console.error("Investigation Board: Error opening linked document from menu", err);
+            }
+          };
+          menu.appendChild(linkOption);
 
-       const removeConnectionsOption = document.createElement('div');
-       removeConnectionsOption.innerHTML = '<i class="fas fa-cut"></i> Remove Connections';
-       removeConnectionsOption.classList.add('ib-context-menu-item');
-       removeConnectionsOption.onclick = async (e) => {
-         e.stopPropagation();
-         menu.remove();
-         const confirm = await foundry.applications.api.DialogV2.confirm({
-           window: { title: "Remove All Connections" },
-           content: `<p>Are you sure you want to remove ALL yarn connections connected to this note?</p>`,
-           rejectClose: false,
-           modal: true
-         });
-         if (confirm) {
-           const noteId = this.document.id;
-           await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.connections`]: [] });
-           const otherNotesWithConnections = canvas.drawings.placeables.filter(d => {
-             if (d.document.id === noteId) return false;
-             const conns = d.document.flags[MODULE_ID]?.connections;
-             return conns && conns.some(c => c.targetId === noteId);
-           });
-           for (let otherNote of otherNotesWithConnections) {
-             const currentConns = otherNote.document.flags[MODULE_ID].connections;
-             const updatedConns = currentConns.filter(c => c.targetId !== noteId);
-             await collaborativeUpdate(otherNote.document.id, { [`flags.${MODULE_ID}.connections`]: updatedConns });
-           }
-           drawAllConnectionLines();
-           ui.notifications.info("All related connections removed.");
-         }
-       };
+          const sep0 = document.createElement('div');
+          sep0.classList.add('ib-context-separator');
+          menu.appendChild(sep0);
+        }
+      }
 
-       const deleteOption = document.createElement('div');
-       deleteOption.innerHTML = '<i class="fas fa-trash"></i> Delete';
-       deleteOption.classList.add('ib-context-menu-item');
-       deleteOption.onclick = async (e) => {
-         e.stopPropagation();
-         menu.remove();
-         const confirm = await foundry.applications.api.DialogV2.confirm({
-           window: { title: "Delete Pin" },
-           content: `<p>Are you sure you want to delete this pin?</p>`,
-           rejectClose: false,
-           modal: true
-         });
-         if (confirm) {
-           await collaborativeDelete(this.document.id);
-         }
-       };
+      // ── Pin Color ────────────────────────────────────────────────────────────
+      const pinColorLabel = document.createElement('div');
+      pinColorLabel.classList.add('ib-context-section-label');
+      pinColorLabel.innerHTML = '<i class="fas fa-thumbtack"></i> Pin Color';
+      menu.appendChild(pinColorLabel);
 
-       menu.appendChild(removeConnectionsOption);
-       menu.appendChild(deleteOption);
-       document.body.appendChild(menu);
-       const closeMenu = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('mousedown', closeMenu); window.removeEventListener('wheel', closeMenu); } };
-       setTimeout(() => { document.addEventListener('mousedown', closeMenu); window.addEventListener('wheel', closeMenu); }, 100);
-       return;
+      const swatchRow = document.createElement('div');
+      swatchRow.classList.add('ib-pin-swatches');
+
+      const pinFiles = await getAvailablePinFiles();
+      for (const filename of pinFiles) {
+        const swatch = document.createElement('img');
+        swatch.src = resolvePinImage(filename);
+        swatch.classList.add('ib-pin-swatch');
+        swatch.title = filename.replace(/\.[^.]+$/, '');
+        if (noteData.pinColor === filename) swatch.classList.add('active');
+        swatch.onclick = async (e) => {
+          e.stopPropagation();
+          menu.remove();
+          await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.pinColor`]: filename });
+        };
+        swatchRow.appendChild(swatch);
+      }
+
+      // Auto/Random tile
+      const randomSwatch = document.createElement('div');
+      randomSwatch.classList.add('ib-pin-swatch', 'ib-pin-swatch-auto');
+      randomSwatch.title = 'Auto (Random)';
+      randomSwatch.innerHTML = '<i class="fas fa-shuffle"></i>';
+      if (!noteData.pinColor) randomSwatch.classList.add('active');
+      randomSwatch.onclick = async (e) => {
+        e.stopPropagation();
+        menu.remove();
+        await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.pinColor`]: "" });
+      };
+      swatchRow.appendChild(randomSwatch);
+      menu.appendChild(swatchRow);
+
+      const sep1 = document.createElement('div');
+      sep1.classList.add('ib-context-separator');
+      menu.appendChild(sep1);
+
+      // ── Connections ──────────────────────────────────────────────────────────
+      const connLabel = document.createElement('div');
+      connLabel.classList.add('ib-context-section-label');
+      connLabel.innerHTML = '<i class="fas fa-link"></i> Connections';
+      menu.appendChild(connLabel);
+
+      const connections = noteData.connections || [];
+
+      if (connections.length > 0) {
+        connections.forEach((conn, i) => {
+          const targetDrawing = canvas.drawings.get(conn.targetId);
+          const targetFlags = targetDrawing?.document.flags[MODULE_ID];
+          const rawText = (targetFlags?.text || targetFlags?.title || '')
+            .replace(/<[^>]*>/g, '').trim();
+          const targetLabel = rawText.slice(0, 22) || `Note (${conn.targetId.slice(0, 6)}…)`;
+
+          const row = document.createElement('div');
+          row.classList.add('ib-connection-row');
+
+          // Color swatch — clicking opens the hidden native color picker
+          const colorSwatch = document.createElement('div');
+          colorSwatch.classList.add('ib-connection-color-swatch');
+          colorSwatch.style.background = conn.color || '#FF0000';
+          colorSwatch.title = 'Change yarn color';
+
+          const colorInput = document.createElement('input');
+          colorInput.type = 'color';
+          colorInput.value = conn.color || '#FF0000';
+          colorInput.classList.add('ib-connection-color-input');
+          colorInput.onchange = async (e) => {
+            e.stopPropagation();
+            const updatedConns = connections.map((c, idx) =>
+              idx === i ? { ...c, color: colorInput.value } : c
+            );
+            await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.connections`]: updatedConns });
+            drawAllConnectionLines();
+            menu.remove();
+          };
+          colorSwatch.appendChild(colorInput);
+          colorSwatch.onclick = (e) => { e.stopPropagation(); colorInput.click(); };
+
+          // Target label
+          const nameEl = document.createElement('span');
+          nameEl.classList.add('ib-connection-name');
+          nameEl.textContent = targetLabel;
+
+          // Remove this single connection
+          const removeBtn = document.createElement('button');
+          removeBtn.classList.add('ib-connection-remove-btn');
+          removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+          removeBtn.title = 'Remove this connection';
+          removeBtn.onclick = async (e) => {
+            e.stopPropagation();
+            const updatedConns = connections.filter((_, idx) => idx !== i);
+            await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.connections`]: updatedConns });
+            drawAllConnectionLines();
+            menu.remove();
+          };
+
+          row.appendChild(colorSwatch);
+          row.appendChild(nameEl);
+          row.appendChild(removeBtn);
+          menu.appendChild(row);
+        });
+      } else {
+        const noConn = document.createElement('div');
+        noConn.classList.add('ib-context-empty');
+        noConn.textContent = 'No connections yet';
+        menu.appendChild(noConn);
+      }
+
+      // Add Connection — enters connection-creation mode from this pin
+      const addConnOption = document.createElement('div');
+      addConnOption.innerHTML = '<i class="fas fa-plus"></i> Add Connection';
+      addConnOption.classList.add('ib-context-menu-item');
+      addConnOption.onclick = (e) => {
+        e.stopPropagation();
+        menu.remove();
+        beginConnectionFrom(self);
+      };
+      menu.appendChild(addConnOption);
+
+      // Remove All Connections (only shown when there are some)
+      if (connections.length > 0) {
+        const removeAllOption = document.createElement('div');
+        removeAllOption.innerHTML = '<i class="fas fa-cut"></i> Remove All Connections';
+        removeAllOption.classList.add('ib-context-menu-item', 'ib-context-menu-item-danger');
+        removeAllOption.onclick = async (e) => {
+          e.stopPropagation();
+          menu.remove();
+          const confirmed = await foundry.applications.api.DialogV2.confirm({
+            window: { title: "Remove All Connections" },
+            content: `<p>Remove ALL yarn connections on this note?</p>`,
+            rejectClose: false,
+            modal: true
+          });
+          if (!confirmed) return;
+          await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.connections`]: [] });
+          const otherNotes = canvas.drawings.placeables.filter(d => {
+            if (d.document.id === noteId) return false;
+            return d.document.flags[MODULE_ID]?.connections?.some(c => c.targetId === noteId);
+          });
+          for (const other of otherNotes) {
+            const updated = other.document.flags[MODULE_ID].connections.filter(c => c.targetId !== noteId);
+            await collaborativeUpdate(other.document.id, { [`flags.${MODULE_ID}.connections`]: updated });
+          }
+          drawAllConnectionLines();
+          ui.notifications.info("All related connections removed.");
+        };
+        menu.appendChild(removeAllOption);
+      }
+
+      const sep2 = document.createElement('div');
+      sep2.classList.add('ib-context-separator');
+      menu.appendChild(sep2);
+
+      // ── Convert To ───────────────────────────────────────────────────────────
+      const convertLabel = document.createElement('div');
+      convertLabel.classList.add('ib-context-section-label');
+      convertLabel.innerHTML = '<i class="fas fa-exchange-alt"></i> Convert to…';
+      menu.appendChild(convertLabel);
+
+      const convertTypes = [
+        { id: 'sticky',   label: 'Sticky Note',  icon: 'fas fa-sticky-note' },
+        { id: 'photo',    label: 'Photo Note',   icon: 'fa-solid fa-camera-polaroid' },
+        { id: 'index',    label: 'Index Card',   icon: 'fa-regular fa-subtitles' },
+        { id: 'handout',  label: 'Handout',      icon: 'fas fa-image' },
+        { id: 'media',    label: 'Media Note',   icon: 'fas fa-cassette-tape' },
+      ];
+      convertTypes.forEach(ct => {
+        const convertOption = document.createElement('div');
+        convertOption.innerHTML = `<i class="${ct.icon}"></i> ${ct.label}`;
+        convertOption.classList.add('ib-context-menu-item');
+        convertOption.onclick = (e) => {
+          e.stopPropagation();
+          menu.remove();
+          self._convertToNoteType(ct.id);
+        };
+        menu.appendChild(convertOption);
+      });
+
+      const sep3 = document.createElement('div');
+      sep3.classList.add('ib-context-separator');
+      menu.appendChild(sep3);
+
+      // ── Delete ───────────────────────────────────────────────────────────────
+      const deleteOption = document.createElement('div');
+      deleteOption.innerHTML = '<i class="fas fa-trash"></i> Delete';
+      deleteOption.classList.add('ib-context-menu-item', 'ib-context-menu-item-danger');
+      deleteOption.onclick = async (e) => {
+        e.stopPropagation();
+        menu.remove();
+        const confirmed = await foundry.applications.api.DialogV2.confirm({
+          window: { title: "Delete Pin" },
+          content: `<p>Are you sure you want to delete this pin?</p>`,
+          rejectClose: false,
+          modal: true
+        });
+        if (confirmed) await collaborativeDelete(noteId);
+      };
+      menu.appendChild(deleteOption);
+
+      document.body.appendChild(menu);
+      const closeMenu = (e) => {
+        if (!menu.contains(e.target)) {
+          menu.remove();
+          document.removeEventListener('mousedown', closeMenu);
+          window.removeEventListener('wheel', closeMenu);
+        }
+      };
+      setTimeout(() => {
+        document.addEventListener('mousedown', closeMenu);
+        window.addEventListener('wheel', closeMenu);
+      }, 100);
+      return;
     }
 
     const editOption = document.createElement('div');

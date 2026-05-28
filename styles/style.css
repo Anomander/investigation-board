@@ -2067,3 +2067,291 @@ body.investigation-board-mode .drawing:not([data-investigation-note='true']) {
 .ib-preview-video-btn:hover {
   background: #1a4a73;
 }
+
+/* ── Pin context menu additions ──────────────────────────────────────────────── */
+
+.ib-context-separator {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 4px 0;
+}
+
+.ib-context-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #999;
+  padding: 4px 10px 2px;
+  pointer-events: none;
+}
+
+/* Pin image swatches (context menu + batch dialog) */
+.ib-pin-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 8px 6px;
+}
+
+.ib-pin-swatch {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.05);
+  transition: border-color 0.12s;
+  box-sizing: border-box;
+}
+
+.ib-pin-swatch:hover {
+  border-color: #888;
+}
+
+.ib-pin-swatch.active {
+  border-color: #2a6099;
+  background: rgba(42, 96, 153, 0.08);
+}
+
+/* Auto / Random tile */
+.ib-pin-swatch-auto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #777;
+  width: 32px;
+  height: 32px;
+}
+
+/* Per-connection rows */
+.ib-connection-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+}
+
+.ib-connection-color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.ib-connection-color-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.ib-connection-name {
+  flex: 1;
+  font-size: 12px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.ib-connection-remove-btn {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  padding: 2px 5px;
+  font-size: 11px;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.ib-connection-remove-btn:hover {
+  color: #c00;
+  background: rgba(200, 0, 0, 0.08);
+}
+
+.ib-context-empty {
+  font-size: 11px;
+  color: #aaa;
+  padding: 3px 10px;
+  font-style: italic;
+}
+
+/* Danger-style context menu items */
+.ib-context-menu-item-danger {
+  color: #c00 !important;
+}
+
+.ib-context-menu-item-danger:hover {
+  background: rgba(200, 0, 0, 0.08) !important;
+  color: #900 !important;
+}
+
+/* ── Batch Edit dialog ──────────────────────────────────────────────────────── */
+
+.ib-batch-edit-dialog .window-content {
+  padding: 10px 12px 12px;
+}
+
+.ib-batch-edit-content form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ib-batch-section {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 8px 10px 10px;
+  background: #fafafa;
+}
+
+.ib-batch-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #666;
+  margin-bottom: 7px;
+}
+
+.ib-batch-optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 10px;
+  color: #aaa;
+}
+
+/* Scope rows */
+.ib-batch-scope-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.ib-batch-scope-row:last-child {
+  margin-bottom: 0;
+}
+
+.ib-batch-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+  min-width: 155px;
+}
+
+.ib-batch-scope-row select {
+  flex: 1;
+  font-size: 12px;
+}
+
+/* Pin swatch row in dialog */
+.ib-batch-pin-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.ib-batch-pin-swatch {
+  /* inherits .ib-pin-swatch sizing */
+}
+
+.ib-batch-pin-keep {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #666;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  padding: 5px 7px;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.05);
+  height: 32px;
+  box-sizing: border-box;
+  transition: border-color 0.12s;
+}
+
+.ib-batch-pin-keep:hover {
+  border-color: #888;
+}
+
+.ib-batch-pin-keep.active {
+  border-color: #2a6099;
+  background: rgba(42, 96, 153, 0.08);
+  color: #2a6099;
+}
+
+/* Connection colour row */
+.ib-batch-conn-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ib-batch-conn-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.ib-batch-conn-row input[type='color'] {
+  width: 36px;
+  height: 26px;
+  padding: 1px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.ib-batch-conn-row input[type='color']:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Preview line */
+.ib-batch-preview-row {
+  font-size: 12px;
+  color: #555;
+  min-height: 18px;
+  padding: 0 2px;
+}
+
+/* Action buttons */
+.ib-batch-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.ib-batch-buttons button {
+  font-size: 12px;
+  padding: 5px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.ib-batch-apply-btn {
+  background: #2a6099;
+  color: #fff;
+  border: 1px solid #1a4a73;
+}
+
+.ib-batch-apply-btn:hover {
+  background: #1a4a73;
+}
