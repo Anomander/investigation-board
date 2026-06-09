@@ -3,16 +3,18 @@ import { InvestigationBoardState } from "./state.js";
 import { registerSettings } from "./settings.js";
 import { CustomDrawing } from "./canvas/custom-drawing.js";
 import { CustomDrawingSheet } from "./apps/drawing-sheet.js";
-import { 
-  drawAllConnectionLines, 
+import {
+  drawAllConnectionLines,
   updatePins,
-  cleanupConnectionLines, 
-  resetPinConnectionState, 
+  cleanupConnectionLines,
+  resetPinConnectionState,
   clearConnectionNumbers,
-  clearConnectionPreview
+  clearConnectionPreview,
+  isInConnectionMode
 } from "./canvas/connection-manager.js";
 import { initSocket, socket, collaborativeUpdate } from "./utils/socket-handler.js";
 import { SetupWarningDialog } from "./apps/setup-warning.js";
+import { BatchEditDialog } from "./apps/batch-edit-dialog.js";
 import { 
   createNote,
   createPhotoNoteFromActor,
@@ -199,6 +201,14 @@ Hooks.on("getSceneControlButtons", (controls) => {
       onChange: () => createNote("pin"),
       button: true
     };
+
+    controls.drawings.tools.batchEditNotes = {
+      name: "batchEditNotes",
+      title: "Batch Edit Notes",
+      icon: "fas fa-layer-group",
+      onChange: () => new BatchEditDialog().render(true),
+      button: true
+    };
   }
 });
 
@@ -258,10 +268,19 @@ Hooks.once("init", () => {
     makeDefault: false,
   });
 
-  // ESC key handler to cancel pin connection
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      resetPinConnectionState();
+  // Configurable keybinding to cancel an in-progress yarn connection.
+  // Returns false when not in connection mode so Foundry's default Escape behaviour
+  // (close dialogs, deselect tokens, etc.) still fires normally.
+  game.keybindings.register(MODULE_ID, "cancelConnection", {
+    name: "Cancel Connection",
+    hint: "Cancel the in-progress yarn connection.",
+    editable: [{ key: "Escape" }],
+    onDown: () => {
+      if (isInConnectionMode()) {
+        resetPinConnectionState();
+        return true; // consume the event
+      }
+      return false; // let Foundry handle Escape normally
     }
   });
 

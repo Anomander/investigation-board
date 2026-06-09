@@ -4,7 +4,7 @@ import { collaborativeUpdate, collaborativeDelete, socket, activeGlobalSounds, a
 import { truncateText, resolvePinImage, getAvailablePinFiles, resolveStampImage, getAvailableStampFiles, openLinkedDocument } from "../utils/helpers.js";
 import { NotePreviewer } from "../apps/note-previewer.js";
 import { VideoPlayer } from "../apps/video-player.js";
-import { drawAllConnectionLines } from "./connection-manager.js";
+import { drawAllConnectionLines, beginConnectionFrom, resetPinConnectionState } from "./connection-manager.js";
 
 // v13 namespaced imports
 const Drawing = foundry.canvas.placeables.Drawing;
@@ -85,16 +85,16 @@ export class CustomDrawing extends Drawing {
    * Override testUserPermission to grant all players 'UPDATE' permission for investigation notes.
    * This is the lowest-level way to ensure Foundry's interaction managers permit right-click.
    */
-  testUserPermission(user, permission, {exact=false}={}) {
+  testUserPermission(user, permission, { exact = false } = {}) {
     const noteData = this.document.flags?.[MODULE_ID];
     if (noteData?.type) {
       // Treat all users as having at least UPDATE permission for context menus and dragging
       const levels = foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS;
       const targetLevel = typeof permission === "string" ? levels[permission] : permission;
-      
+
       if (targetLevel <= levels.OWNER) return true;
     }
-    return super.testUserPermission(user, permission, {exact});
+    return super.testUserPermission(user, permission, { exact });
   }
 
   /**
@@ -258,7 +258,7 @@ export class CustomDrawing extends Drawing {
   /**
    * Show a custom context menu at the mouse position.
    */
-  _showContextMenu(event) {
+  async _showContextMenu(event) {
     const noteData = this.document.flags?.[MODULE_ID];
     if (!noteData) return;
 
@@ -293,118 +293,290 @@ export class CustomDrawing extends Drawing {
     menu.style.zIndex = '10000';
 
     if (noteData.type === "pin") {
-       // Edit option — kept for potential future use
-       // const editOption = document.createElement('div');
-       // editOption.innerHTML = '<i class="fas fa-edit"></i> Edit';
-       // editOption.classList.add('ib-context-menu-item');
-       // editOption.onclick = (e) => {
-       //   e.stopPropagation();
-       //   this.document.sheet.render(true);
-       //   menu.remove();
-       // };
+      // Cancel any in-progress connection SYNCHRONOUSLY, before the first await below.
+      // This removes the stage-level onCanvasRightClick listener before pointerup fires,
+      // so the "Create connected note" menu can never appear on top of ours.
+      resetPinConnectionState();
 
-       if (noteData.linkedObject) {
-         const linkMatch = noteData.linkedObject.match(/\[([^\]]+)\]/);
-         if (linkMatch) {
-           const uuid = linkMatch[1];
-           const linkOption = document.createElement('div');
-           linkOption.innerHTML = `<i class="fas fa-link"></i> Open`;
-           linkOption.classList.add('ib-context-menu-item');
-           linkOption.onclick = async (e) => {
-             e.stopPropagation();
-             menu.remove();
-             try {
-               const doc = await fromUuid(uuid);
-               if (doc) {
-                 if (doc.testUserPermission(game.user, "LIMITED")) {
-                   openLinkedDocument(doc);
-                 } else {
-                   ui.notifications.warn(`You do not have permission to view ${doc.name}.`);
-                 }
-               } else {
-                 ui.notifications.warn(`Could not find linked document.`);
-               }
-             } catch (err) {
-               console.error("Investigation Board: Error opening linked document from menu", err);
-             }
-           };
-           menu.appendChild(linkOption);
-         }
-       }
+      if (noteData.linkedObject) {
+        const linkMatch = noteData.linkedObject.match(/\[([^\]]+)\]/);
+        if (linkMatch) {
+          const uuid = linkMatch[1];
+          const linkOption = document.createElement('div');
+          linkOption.innerHTML = `<i class="fas fa-link"></i> Open`;
+          linkOption.classList.add('ib-context-menu-item');
+          linkOption.onclick = async (e) => {
+            e.stopPropagation();
+            menu.remove();
+            try {
+              const doc = await fromUuid(uuid);
+              if (doc) {
+                if (doc.testUserPermission(game.user, "LIMITED")) {
+                  openLinkedDocument(doc);
+                } else {
+                  ui.notifications.warn(`You do not have permission to view ${doc.name}.`);
+                }
+              } else {
+                ui.notifications.warn(`Could not find linked document.`);
+              }
+            } catch (err) {
+              console.error("Investigation Board: Error opening linked document from menu", err);
+            }
+          };
+          menu.appendChild(linkOption);
+        }
+      }
+      const self = this;
+      const noteId = this.document.id;
 
-       // Convert-to options
-       const convertTypes = [
-         { id: 'sticky',  label: 'Sticky Note',  icon: 'fas fa-sticky-note' },
-         { id: 'photo',   label: 'Photo Note',   icon: 'fa-solid fa-camera-polaroid' },
-         { id: 'index',   label: 'Index Card',   icon: 'fa-regular fa-subtitles' },
-         { id: 'handout', label: 'Handout',      icon: 'fas fa-image' },
-         { id: 'media',   label: 'Media Note',   icon: 'fas fa-cassette-tape' },
-       ];
-       convertTypes.forEach(ct => {
-         const convertOption = document.createElement('div');
-         convertOption.innerHTML = `<i class="${ct.icon}"></i> Convert to ${ct.label}`;
-         convertOption.classList.add('ib-context-menu-item');
-         convertOption.onclick = (e) => {
-           e.stopPropagation();
-           menu.remove();
-           this._convertToNoteType(ct.id);
-         };
-         menu.appendChild(convertOption);
-       });
+      // --- Linked object "Open" option ---
+      if (noteData.linkedObject) {
+        const linkMatch = noteData.linkedObject.match(/\[([^\]]+)\]/);
+        if (linkMatch) {
+          const uuid = linkMatch[1];
+          const linkOption = document.createElement('div');
+          linkOption.innerHTML = `<i class="fas fa-link"></i> Open`;
+          linkOption.classList.add('ib-context-menu-item');
+          linkOption.onclick = async (e) => {
+            e.stopPropagation();
+            menu.remove();
+            try {
+              const doc = await fromUuid(uuid);
+              if (doc) {
+                if (doc.testUserPermission(game.user, "LIMITED")) doc.sheet.render(true);
+                else ui.notifications.warn("You do not have permission to view this document.");
+              } else {
+                ui.notifications.warn("Could not find linked document.");
+              }
+            } catch (err) {
+              console.error("Investigation Board: Error opening linked document from menu", err);
+            }
+          };
+          menu.appendChild(linkOption);
 
-       const removeConnectionsOption = document.createElement('div');
-       removeConnectionsOption.innerHTML = '<i class="fas fa-cut"></i> Remove Connections';
-       removeConnectionsOption.classList.add('ib-context-menu-item');
-       removeConnectionsOption.onclick = async (e) => {
-         e.stopPropagation();
-         menu.remove();
-         const confirm = await foundry.applications.api.DialogV2.confirm({
-           window: { title: "Remove All Connections" },
-           content: `<p>Are you sure you want to remove ALL yarn connections connected to this note?</p>`,
-           rejectClose: false,
-           modal: true
-         });
-         if (confirm) {
-           const noteId = this.document.id;
-           await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.connections`]: [] });
-           const otherNotesWithConnections = canvas.drawings.placeables.filter(d => {
-             if (d.document.id === noteId) return false;
-             const conns = d.document.flags[MODULE_ID]?.connections;
-             return conns && conns.some(c => c.targetId === noteId);
-           });
-           for (let otherNote of otherNotesWithConnections) {
-             const currentConns = otherNote.document.flags[MODULE_ID].connections;
-             const updatedConns = currentConns.filter(c => c.targetId !== noteId);
-             await collaborativeUpdate(otherNote.document.id, { [`flags.${MODULE_ID}.connections`]: updatedConns });
-           }
-           drawAllConnectionLines();
-           ui.notifications.info("All related connections removed.");
-         }
-       };
+          const sep0 = document.createElement('div');
+          sep0.classList.add('ib-context-separator');
+          menu.appendChild(sep0);
+        }
+      }
 
-       const deleteOption = document.createElement('div');
-       deleteOption.innerHTML = '<i class="fas fa-trash"></i> Delete';
-       deleteOption.classList.add('ib-context-menu-item');
-       deleteOption.onclick = async (e) => {
-         e.stopPropagation();
-         menu.remove();
-         const confirm = await foundry.applications.api.DialogV2.confirm({
-           window: { title: "Delete Pin" },
-           content: `<p>Are you sure you want to delete this pin?</p>`,
-           rejectClose: false,
-           modal: true
-         });
-         if (confirm) {
-           await collaborativeDelete(this.document.id);
-         }
-       };
+      // ── Pin Color ────────────────────────────────────────────────────────────
+      const pinColorLabel = document.createElement('div');
+      pinColorLabel.classList.add('ib-context-section-label');
+      pinColorLabel.innerHTML = '<i class="fas fa-thumbtack"></i> Pin Color';
+      menu.appendChild(pinColorLabel);
 
-       menu.appendChild(removeConnectionsOption);
-       menu.appendChild(deleteOption);
-       document.body.appendChild(menu);
-       const closeMenu = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('mousedown', closeMenu); window.removeEventListener('wheel', closeMenu); } };
-       setTimeout(() => { document.addEventListener('mousedown', closeMenu); window.addEventListener('wheel', closeMenu); }, 100);
-       return;
+      const swatchRow = document.createElement('div');
+      swatchRow.classList.add('ib-pin-swatches');
+
+      const pinFiles = await getAvailablePinFiles();
+      for (const filename of pinFiles) {
+        const swatch = document.createElement('img');
+        swatch.src = resolvePinImage(filename);
+        swatch.classList.add('ib-pin-swatch');
+        swatch.title = filename.replace(/\.[^.]+$/, '');
+        if (noteData.pinColor === filename) swatch.classList.add('active');
+        swatch.onclick = async (e) => {
+          e.stopPropagation();
+          menu.remove();
+          await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.pinColor`]: filename });
+        };
+        swatchRow.appendChild(swatch);
+      }
+
+      // Auto/Random tile
+      const randomSwatch = document.createElement('div');
+      randomSwatch.classList.add('ib-pin-swatch', 'ib-pin-swatch-auto');
+      randomSwatch.title = 'Auto (Random)';
+      randomSwatch.innerHTML = '<i class="fas fa-shuffle"></i>';
+      if (!noteData.pinColor) randomSwatch.classList.add('active');
+      randomSwatch.onclick = async (e) => {
+        e.stopPropagation();
+        menu.remove();
+        await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.pinColor`]: "" });
+      };
+      swatchRow.appendChild(randomSwatch);
+      menu.appendChild(swatchRow);
+
+      const sep1 = document.createElement('div');
+      sep1.classList.add('ib-context-separator');
+      menu.appendChild(sep1);
+
+      // ── Connections ──────────────────────────────────────────────────────────
+      const connLabel = document.createElement('div');
+      connLabel.classList.add('ib-context-section-label');
+      connLabel.innerHTML = '<i class="fas fa-link"></i> Connections';
+      menu.appendChild(connLabel);
+
+      const connections = noteData.connections || [];
+
+      if (connections.length > 0) {
+        connections.forEach((conn, i) => {
+          const targetDrawing = canvas.drawings.get(conn.targetId);
+          const targetFlags = targetDrawing?.document.flags[MODULE_ID];
+          const rawText = (targetFlags?.text || targetFlags?.title || '')
+            .replace(/<[^>]*>/g, '').trim();
+          const targetLabel = rawText.slice(0, 22) || `Note (${conn.targetId.slice(0, 6)}…)`;
+
+          const row = document.createElement('div');
+          row.classList.add('ib-connection-row');
+
+          // Color swatch — clicking opens the hidden native color picker
+          const colorSwatch = document.createElement('div');
+          colorSwatch.classList.add('ib-connection-color-swatch');
+          colorSwatch.style.background = conn.color || '#FF0000';
+          colorSwatch.title = 'Change yarn color';
+
+          const colorInput = document.createElement('input');
+          colorInput.type = 'color';
+          colorInput.value = conn.color || '#FF0000';
+          colorInput.classList.add('ib-connection-color-input');
+          colorInput.onchange = async (e) => {
+            e.stopPropagation();
+            const updatedConns = connections.map((c, idx) =>
+              idx === i ? { ...c, color: colorInput.value } : c
+            );
+            await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.connections`]: updatedConns });
+            drawAllConnectionLines();
+            menu.remove();
+          };
+          colorSwatch.appendChild(colorInput);
+          colorSwatch.onclick = (e) => { e.stopPropagation(); colorInput.click(); };
+
+          // Target label
+          const nameEl = document.createElement('span');
+          nameEl.classList.add('ib-connection-name');
+          nameEl.textContent = targetLabel;
+
+          // Remove this single connection
+          const removeBtn = document.createElement('button');
+          removeBtn.classList.add('ib-connection-remove-btn');
+          removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+          removeBtn.title = 'Remove this connection';
+          removeBtn.onclick = async (e) => {
+            e.stopPropagation();
+            const updatedConns = connections.filter((_, idx) => idx !== i);
+            await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.connections`]: updatedConns });
+            drawAllConnectionLines();
+            menu.remove();
+          };
+
+          row.appendChild(colorSwatch);
+          row.appendChild(nameEl);
+          row.appendChild(removeBtn);
+          menu.appendChild(row);
+        });
+      } else {
+        const noConn = document.createElement('div');
+        noConn.classList.add('ib-context-empty');
+        noConn.textContent = 'No connections yet';
+        menu.appendChild(noConn);
+      }
+
+      // Add Connection — enters connection-creation mode from this pin
+      const addConnOption = document.createElement('div');
+      addConnOption.innerHTML = '<i class="fas fa-plus"></i> Add Connection';
+      addConnOption.classList.add('ib-context-menu-item');
+      addConnOption.onclick = (e) => {
+        e.stopPropagation();
+        menu.remove();
+        beginConnectionFrom(self);
+      };
+      menu.appendChild(addConnOption);
+
+      // Remove All Connections (only shown when there are some)
+      if (connections.length > 0) {
+        const removeAllOption = document.createElement('div');
+        removeAllOption.innerHTML = '<i class="fas fa-cut"></i> Remove All Connections';
+        removeAllOption.classList.add('ib-context-menu-item', 'ib-context-menu-item-danger');
+        removeAllOption.onclick = async (e) => {
+          e.stopPropagation();
+          menu.remove();
+          const confirmed = await foundry.applications.api.DialogV2.confirm({
+            window: { title: "Remove All Connections" },
+            content: `<p>Remove ALL yarn connections on this note?</p>`,
+            rejectClose: false,
+            modal: true
+          });
+          if (!confirmed) return;
+          await collaborativeUpdate(noteId, { [`flags.${MODULE_ID}.connections`]: [] });
+          const otherNotes = canvas.drawings.placeables.filter(d => {
+            if (d.document.id === noteId) return false;
+            return d.document.flags[MODULE_ID]?.connections?.some(c => c.targetId === noteId);
+          });
+          for (const other of otherNotes) {
+            const updated = other.document.flags[MODULE_ID].connections.filter(c => c.targetId !== noteId);
+            await collaborativeUpdate(other.document.id, { [`flags.${MODULE_ID}.connections`]: updated });
+          }
+          drawAllConnectionLines();
+          ui.notifications.info("All related connections removed.");
+        };
+        menu.appendChild(removeAllOption);
+      }
+
+      const sep2 = document.createElement('div');
+      sep2.classList.add('ib-context-separator');
+      menu.appendChild(sep2);
+
+      // ── Convert To ───────────────────────────────────────────────────────────
+      const convertLabel = document.createElement('div');
+      convertLabel.classList.add('ib-context-section-label');
+      convertLabel.innerHTML = '<i class="fas fa-exchange-alt"></i> Convert to…';
+      menu.appendChild(convertLabel);
+
+      const convertTypes = [
+        { id: 'sticky', label: 'Sticky Note', icon: 'fas fa-sticky-note' },
+        { id: 'photo', label: 'Photo Note', icon: 'fa-solid fa-camera-polaroid' },
+        { id: 'index', label: 'Index Card', icon: 'fa-regular fa-subtitles' },
+        { id: 'handout', label: 'Handout', icon: 'fas fa-image' },
+        { id: 'media', label: 'Media Note', icon: 'fas fa-cassette-tape' },
+      ];
+      convertTypes.forEach(ct => {
+        const convertOption = document.createElement('div');
+        convertOption.innerHTML = `<i class="${ct.icon}"></i> ${ct.label}`;
+        convertOption.classList.add('ib-context-menu-item');
+        convertOption.onclick = (e) => {
+          e.stopPropagation();
+          menu.remove();
+          self._convertToNoteType(ct.id);
+        };
+        menu.appendChild(convertOption);
+      });
+
+      const sep3 = document.createElement('div');
+      sep3.classList.add('ib-context-separator');
+      menu.appendChild(sep3);
+
+      // ── Delete ───────────────────────────────────────────────────────────────
+      const deleteOption = document.createElement('div');
+      deleteOption.innerHTML = '<i class="fas fa-trash"></i> Delete';
+      deleteOption.classList.add('ib-context-menu-item', 'ib-context-menu-item-danger');
+      deleteOption.onclick = async (e) => {
+        e.stopPropagation();
+        menu.remove();
+        const confirmed = await foundry.applications.api.DialogV2.confirm({
+          window: { title: "Delete Pin" },
+          content: `<p>Are you sure you want to delete this pin?</p>`,
+          rejectClose: false,
+          modal: true
+        });
+        if (confirmed) await collaborativeDelete(noteId);
+      };
+      menu.appendChild(deleteOption);
+
+      document.body.appendChild(menu);
+      const closeMenu = (e) => {
+        if (!menu.contains(e.target)) {
+          menu.remove();
+          document.removeEventListener('mousedown', closeMenu);
+          window.removeEventListener('wheel', closeMenu);
+        }
+      };
+      setTimeout(() => {
+        document.addEventListener('mousedown', closeMenu);
+        window.addEventListener('wheel', closeMenu);
+      }, 100);
+      return;
     }
 
     const editOption = document.createElement('div');
@@ -550,7 +722,7 @@ export class CustomDrawing extends Drawing {
 
       if (confirm) {
         const noteId = this.document.id;
-        
+
         // 1. Clear outgoing connections (from this note to others)
         await collaborativeUpdate(noteId, {
           [`flags.${MODULE_ID}.connections`]: []
@@ -566,7 +738,7 @@ export class CustomDrawing extends Drawing {
         for (let otherNote of otherNotesWithConnections) {
           const currentConns = otherNote.document.flags[MODULE_ID].connections;
           const updatedConns = currentConns.filter(c => c.targetId !== noteId);
-          
+
           await collaborativeUpdate(otherNote.document.id, {
             [`flags.${MODULE_ID}.connections`]: updatedConns
           });
@@ -607,7 +779,7 @@ export class CustomDrawing extends Drawing {
         linkOption.onclick = async (e) => {
           e.stopPropagation();
           menu.remove();
-          
+
           try {
             const doc = await fromUuid(uuid);
             if (doc) {
@@ -650,11 +822,11 @@ export class CustomDrawing extends Drawing {
     if (STAMPABLE_TYPES.includes(noteData.type)) {
       const STAMP_LABELS = {
         'classified.webp': 'Classified',
-        'deceased.webp':   'Deceased',
-        'evidence.webp':   'Evidence',
-        'missing.webp':    'Missing',
-        'redacted.webp':   'Redacted',
-        'x-mark.webp':     'X Mark',
+        'deceased.webp': 'Deceased',
+        'evidence.webp': 'Evidence',
+        'missing.webp': 'Missing',
+        'redacted.webp': 'Redacted',
+        'x-mark.webp': 'X Mark',
       };
 
       const stampItem = document.createElement('div');
@@ -717,7 +889,7 @@ export class CustomDrawing extends Drawing {
         window.removeEventListener('wheel', closeMenu);
       }
     };
-    
+
     // Delay adding the listener to avoid immediate closing if the right-click event bubbles
     setTimeout(() => {
       document.addEventListener('mousedown', closeMenu);
@@ -741,7 +913,7 @@ export class CustomDrawing extends Drawing {
     if (this.controls && noteType && noteType !== "handout" && noteType !== "pin") {
       const originalRefresh = this.controls._refresh.bind(this.controls);
       const self = this;
-      this.controls._refresh = function() {
+      this.controls._refresh = function () {
         originalRefresh();
         if (game.settings.get(MODULE_ID, "showSelectionControls")) {
           self._applyHandleVisibility();
@@ -897,7 +1069,7 @@ export class CustomDrawing extends Drawing {
     this.stampSprite.alpha = 0.85;
     try {
       this.stampSprite.tint = game.settings.get(MODULE_ID, "stampTint") || "#cc0000";
-    } catch(e) { this.stampSprite.tint = 0xcc0000; }
+    } catch (e) { this.stampSprite.tint = 0xcc0000; }
 
     // Clamp center using the actual rotated bounding box so the stamp never
     // escapes the note edges regardless of tilt or aspect ratio.
@@ -970,7 +1142,7 @@ export class CustomDrawing extends Drawing {
       }
 
       const fallbackImage = isVideo ? "modules/investigation-board/assets/video1.webp"
-                                     : "modules/investigation-board/assets/cassette1.webp";
+        : "modules/investigation-board/assets/cassette1.webp";
       const imagePath = noteData.image || fallbackImage;
       try {
         const texture = await PIXI.Assets.load(imagePath);
@@ -980,7 +1152,7 @@ export class CustomDrawing extends Drawing {
             this.bgShadow.texture = texture;
             this.bgShadow.width = drawingWidth;
             this.bgShadow.height = drawingHeight;
-            try { this.bgShadow.tint = 0x000000; } catch(e) {}
+            try { this.bgShadow.tint = 0x000000; } catch (e) { }
             this.bgShadow.alpha = 0.4;
             this.bgShadow.position.set(6, 6); // Offset shadow
             this.bgShadow.filters = [new PIXI.BlurFilter(2)];
@@ -991,7 +1163,7 @@ export class CustomDrawing extends Drawing {
             this.photoImageSprite.width = drawingWidth;
             this.photoImageSprite.height = drawingHeight;
             this.photoImageSprite.position.set(0, 0);
-            
+
             this.photoImageSprite.mask = null;
             if (this.photoMask) this.photoMask.visible = false;
             this.photoImageSprite.visible = true;
@@ -1018,8 +1190,8 @@ export class CustomDrawing extends Drawing {
 
         // Label geometry: VHS label is wider and sits higher than a cassette label
         const wrapWidth = isVideoDisplay ? drawingWidth * 0.65 : drawingWidth * 0.50;
-        const textX    = drawingWidth / 2;
-        const textY    = isVideoDisplay ? drawingHeight * 0.5 : drawingHeight * 0.30;
+        const textX = drawingWidth / 2;
+        const textY = isVideoDisplay ? drawingHeight * 0.5 : drawingHeight * 0.30;
 
         const textStyle = new PIXI.TextStyle({
           fontFamily: font,
@@ -1082,7 +1254,7 @@ export class CustomDrawing extends Drawing {
             this.bgShadow.texture = texture;
             this.bgShadow.width = docW;
             this.bgShadow.height = docH;
-            try { this.bgShadow.tint = 0x000000; } catch(e) {}
+            try { this.bgShadow.tint = 0x000000; } catch (e) { }
             this.bgShadow.alpha = 0.35;
             this.bgShadow.position.set(8, 8);
             this.bgShadow.filters = [new PIXI.BlurFilter(4)];
@@ -1094,7 +1266,7 @@ export class CustomDrawing extends Drawing {
             this.bgSprite.tint = 0xFFFFFF;
           }
         }
-      } catch(err) {
+      } catch (err) {
         console.error(`Investigation Board: Failed to load document background: ${bgImage}`, err);
       }
 
@@ -1145,15 +1317,15 @@ export class CustomDrawing extends Drawing {
         wordWrapWidth: docW - MARGIN * 2,
         align: "left",
         tagStyles: {
-          b:      { ...tagFont, fontWeight: 'bold' },
+          b: { ...tagFont, fontWeight: 'bold' },
           strong: { ...tagFont, fontWeight: 'bold' },
-          i:      { ...tagFont, fontStyle: 'italic' },
-          em:     { ...tagFont, fontStyle: 'italic' },
-          u:      tagFont,
-          s:      tagFont,
+          i: { ...tagFont, fontStyle: 'italic' },
+          em: { ...tagFont, fontStyle: 'italic' },
+          u: tagFont,
+          s: tagFont,
           strike: tagFont,
-          span:   tagFont,
-          p:      tagFont,
+          span: tagFont,
+          p: tagFont,
         },
       });
       if (!this.docBodyText || this.docBodyText.destroyed) {
@@ -1218,7 +1390,7 @@ export class CustomDrawing extends Drawing {
       if (!this.photoImageSprite || !this.photoImageSprite.parent) {
         // Destroy old sprite if it exists
         if (this.photoImageSprite) {
-          try { this.photoImageSprite.destroy(); } catch(e) {}
+          try { this.photoImageSprite.destroy(); } catch (e) { }
           this.photoImageSprite = null;
         }
         this.photoImageSprite = new PIXI.Sprite();
@@ -1277,7 +1449,7 @@ export class CustomDrawing extends Drawing {
       await this._loadStampTexture(noteData);
       return; // Early exit for handout notes
     }
-    
+
     // STANDARD LAYOUT (Modern photo notes, sticky, index, etc.)
     // Use document shape dimensions as the authoritative size — they match the settings
     // at creation time and correctly reflect any subsequent scaling by the user.
@@ -1294,12 +1466,12 @@ export class CustomDrawing extends Drawing {
         : isIndex
           ? Math.round(width / (600 / 400))
           : width);
-    
+
     // Background Image: Always use modern mode assets
-    const bgImage = isPhoto ? "modules/investigation-board/assets/photoFrame.webp" 
-                  : isIndex ? "modules/investigation-board/assets/note_index.webp" 
-                  : "modules/investigation-board/assets/note_white.webp";
-    
+    const bgImage = isPhoto ? "modules/investigation-board/assets/photoFrame.webp"
+      : isIndex ? "modules/investigation-board/assets/note_index.webp"
+        : "modules/investigation-board/assets/note_white.webp";
+
     if (!this.bgSprite) {
       this.bgSprite = new PIXI.Sprite();
       this.shape.addChild(this.bgSprite);
@@ -1310,7 +1482,7 @@ export class CustomDrawing extends Drawing {
       this.bgShadow = new PIXI.Sprite();
       this.shape.addChildAt(this.bgShadow, 0); // Behind the background
     }
-    
+
     try {
       const texture = await PIXI.Assets.load(bgImage);
       if (texture) {
@@ -1319,7 +1491,7 @@ export class CustomDrawing extends Drawing {
           this.bgShadow.texture = texture;
           this.bgShadow.width = width;
           this.bgShadow.height = height;
-          try { this.bgShadow.tint = 0x000000; } catch(e) {}
+          try { this.bgShadow.tint = 0x000000; } catch (e) { }
           this.bgShadow.alpha = 0.4;
           this.bgShadow.position.set(6, 6);
           this.bgShadow.filters = [new PIXI.BlurFilter(3)];
@@ -1349,7 +1521,7 @@ export class CustomDrawing extends Drawing {
         this.bgSprite.texture = PIXI.Texture.EMPTY;
       }
     }
-    
+
     // --- Foreground (User-Assigned) Photo ---
     if (isPhoto) {
       const fgImage = noteData.image || "modules/investigation-board/assets/placeholder.webp";
@@ -1362,7 +1534,7 @@ export class CustomDrawing extends Drawing {
         const texture = await PIXI.Assets.load(fgImage);
         if (texture && this.photoImageSprite && !this.photoImageSprite.destroyed) {
           this.photoImageSprite.texture = texture;
-          
+
           // Calculate available frame space inside the polaroid
           const widthOffset = width * 0.13333;
           const heightOffset = height * 0.30246;
@@ -1387,7 +1559,7 @@ export class CustomDrawing extends Drawing {
             // Fit by width, crop from bottom
             spriteWidth = frameWidth;
             spriteHeight = frameWidth / textureRatio;
-            offsetX = 0; 
+            offsetX = 0;
             offsetY = 0; // Top aligned - KEEPS HEAD VISIBLE
           }
 
@@ -1419,7 +1591,7 @@ export class CustomDrawing extends Drawing {
       this.photoImageSprite.visible = false;
       if (this.photoMask) this.photoMask.visible = false;
     }
-    
+
     // --- Pin Handling (managed by updatePins, just load texture here) ---
     await this._loadPinTexture(noteData);
 
@@ -1501,12 +1673,12 @@ export class CustomDrawing extends Drawing {
    */
   async _convertToNoteType(targetType) {
     // Capture everything we need before the delete destroys the document
-    const existing  = this.document.flags[MODULE_ID] || {};
-    const savedX    = this.document.x;
-    const savedY    = this.document.y;
+    const existing = this.document.flags[MODULE_ID] || {};
+    const savedX = this.document.x;
+    const savedY = this.document.y;
     const savedConns = (existing.connections || []).slice();
-    const savedLink  = existing.linkedObject || "";
-    const pinId      = this.document.id;
+    const savedLink = existing.linkedObject || "";
+    const pinId = this.document.id;
 
     // Collect notes with incoming connections pointing at this pin, before deleting it
     const incomingNotes = canvas.drawings.placeables.filter(d => {
@@ -1525,8 +1697,8 @@ export class CustomDrawing extends Drawing {
     if (newDoc?.id) {
       // Restore outgoing connections and linked object on the new note
       const updates = {};
-      if (savedLink)         updates[`flags.${MODULE_ID}.linkedObject`] = savedLink;
-      if (savedConns.length) updates[`flags.${MODULE_ID}.connections`]  = savedConns;
+      if (savedLink) updates[`flags.${MODULE_ID}.linkedObject`] = savedLink;
+      if (savedConns.length) updates[`flags.${MODULE_ID}.connections`] = savedConns;
       if (Object.keys(updates).length) await collaborativeUpdate(newDoc.id, updates);
 
       // Re-point incoming connections from the old pin ID to the new note ID

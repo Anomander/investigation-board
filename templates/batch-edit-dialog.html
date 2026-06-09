@@ -1,0 +1,92 @@
+<div class="ib-batch-edit-content">
+  <form autocomplete="off">
+
+    {{!-- ── Scope ─────────────────────────────────────────────────────────────── --}}
+    <div class="ib-batch-section">
+      <div class="ib-batch-section-title">Scope</div>
+
+      <div class="ib-batch-scope-row">
+        <label class="ib-batch-radio-label">
+          <input type="radio" name="scope" value="selected" checked>
+          Selected Notes
+        </label>
+      </div>
+
+      <div class="ib-batch-scope-row">
+        <label class="ib-batch-radio-label">
+          <input type="radio" name="scope" value="all">
+          All Notes
+        </label>
+      </div>
+
+      <div class="ib-batch-scope-row">
+        <label class="ib-batch-radio-label">
+          <input type="radio" name="scope" value="type">
+          Notes of type:
+        </label>
+        <select name="scopeType" disabled>
+          {{#each noteTypes}}
+            <option value="{{id}}">{{label}}</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+
+    {{!-- ── Pin Colour ──────────────────────────────────────────────────────────── --}}
+    <div class="ib-batch-section">
+      <div class="ib-batch-section-title">
+        Pin Color
+        <span class="ib-batch-optional">— leave on "Keep" to skip</span>
+      </div>
+      <div class="ib-batch-pin-row">
+        {{#each pinFileList}}
+          <img
+            class="ib-batch-pin-swatch ib-pin-swatch"
+            src="{{src}}"
+            data-filename="{{filename}}"
+            title="{{label}}"
+            alt="{{label}}"
+          >
+        {{/each}}
+        {{!-- Auto/Random --}}
+        <div
+          class="ib-batch-pin-swatch ib-pin-swatch ib-pin-swatch-auto"
+          data-filename=""
+          title="Auto (Random)"
+        >
+          <i class="fas fa-shuffle"></i>
+        </div>
+        {{!-- Keep current (default) --}}
+        <div class="ib-batch-pin-keep" title="Keep each note's current pin">
+          <i class="fas fa-minus"></i> Keep
+        </div>
+      </div>
+    </div>
+
+    {{!-- ── Connection Colour ──────────────────────────────────────────────────── --}}
+    <div class="ib-batch-section">
+      <div class="ib-batch-section-title">Connection (Yarn) Color</div>
+      <div class="ib-batch-conn-row">
+        <label class="ib-batch-conn-label">
+          <input type="checkbox" id="ib-batch-conn-enable">
+          Change yarn color to:
+        </label>
+        <input type="color" name="connColor" value="#FF0000" disabled>
+      </div>
+    </div>
+
+    {{!-- ── Preview ───────────────────────────────────────────────────────────── --}}
+    <div class="ib-batch-preview-row">
+      <span id="ib-batch-preview">Select a scope above.</span>
+    </div>
+
+    {{!-- ── Buttons ──────────────────────────────────────────────────────────── --}}
+    <div class="ib-batch-buttons">
+      <button type="button" id="ib-batch-cancel">Cancel</button>
+      <button type="button" id="ib-batch-apply" class="ib-batch-apply-btn">
+        <i class="fas fa-check"></i> Apply
+      </button>
+    </div>
+
+  </form>
+</div>

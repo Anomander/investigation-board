@@ -19,6 +19,13 @@ https://github.com/mordachai/investigation-board/releases/download/v4.10.1/modul
 
 A Foundry VTT module that lets everyone create, edit, and move sticky and photo notes on the scene. A must-have for investigative games like City of Mist, Call of Cthulhu, and all your conspiracy adventures.
 
+## NEW FEATURE >> Batch Edit Connections
+
+Now we have a button in the Drawing Tools that displays a panel where you can batch edit pins and yarn connections.
+
+<img width="1217" height="736" alt="image" src="https://github.com/user-attachments/assets/3db14754-1884-48dd-87ac-6de9434c9c3f" />
+
+
 ## NEW FEATURE >> Stamps Overlays!
 
 Wanna make your investigators feel they are in power? Let them stamp their notes! Right click >> Stamp >> Choose it. The stamp will appear below the cursor on the note.
