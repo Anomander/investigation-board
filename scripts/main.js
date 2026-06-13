@@ -151,10 +151,10 @@ function _getPlaylistSoundFromLi(li) {
 }
 
 Hooks.on("getSceneControlButtons", (controls) => {
-  // Find the drawings control group in the controls array (robust for both v13 and v14)
-  const drawingsControl = controls.find(c => c.name === "drawings") || controls.drawings;
-  if (drawingsControl && drawingsControl.tools) {
-    drawingsControl.tools.createStickyNote = {
+  // Add Investigation Board tools to the existing drawings control
+  if (controls.drawings && controls.drawings.tools) {
+    // Add a separator for visual grouping (optional)
+    controls.drawings.tools.createStickyNote = {
       name: "createStickyNote",
       title: "Create Sticky Note",
       icon: "fas fa-sticky-note",
@@ -162,7 +162,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
       button: true
     };
 
-    drawingsControl.tools.createPhotoNote = {
+    controls.drawings.tools.createPhotoNote = {
       name: "createPhotoNote",
       title: "Create Photo Note",
       icon: "fa-solid fa-camera-polaroid",
@@ -170,7 +170,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
       button: true
     };
 
-    drawingsControl.tools.createIndexCard = {
+    controls.drawings.tools.createIndexCard = {
       name: "createIndexCard",
       title: "Create Index Card",
       icon: "fa-regular fa-subtitles",
@@ -178,7 +178,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
       button: true
     };
 
-    drawingsControl.tools.createHandout = {
+    controls.drawings.tools.createHandout = {
       name: "createHandout",
       title: "Create Handout Note",
       icon: "fas fa-file-image",
@@ -186,7 +186,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
       button: true
     };
 
-    drawingsControl.tools.createMediaNote = {
+    controls.drawings.tools.createMediaNote = {
       name: "createMediaNote",
       title: "Create Media Note",
       icon: "fas fa-cassette-tape",
@@ -194,7 +194,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
       button: true
     };
 
-    drawingsControl.tools.createBookNote = {
+    controls.drawings.tools.createBookNote = {
       name: "createBookNote",
       title: "Create Book Note",
       icon: "fas fa-book-open",
@@ -202,7 +202,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
       button: true
     };
 
-    drawingsControl.tools.createPinOnly = {
+    controls.drawings.tools.createPinOnly = {
       name: "createPinOnly",
       title: "Create Pin Only",
       icon: "fas fa-thumbtack",
@@ -210,7 +210,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
       button: true
     };
 
-    drawingsControl.tools.batchEditNotes = {
+    controls.drawings.tools.batchEditNotes = {
       name: "batchEditNotes",
       title: "Batch Edit Notes",
       icon: "fas fa-layer-group",
