@@ -94,6 +94,9 @@ export class CustomDrawingSheet extends DrawingConfig {
     context.docBackground = customData.docBackground;
     context.docBackgrounds = DOC_BACKGROUNDS;
 
+    // Book fields
+    context.pdfPath = customData.pdfPath;
+
     // Enrich the linked object for display
     context.enrichedLinkedObject = context.linkedObject
       ? await TextEditor.enrichHTML(context.linkedObject, { async: true })
@@ -196,6 +199,7 @@ export class CustomDrawingSheet extends DrawingConfig {
         photo: 'Photo Note',
         index: 'Index Card',
         handout: 'Handout',
+        book: 'Book Note',
       },
       // Video fields
       videoPath: ibFlags.videoPath || '',
@@ -233,6 +237,8 @@ export class CustomDrawingSheet extends DrawingConfig {
       // Document fields
       title: ibFlags.title || '',
       docBackground: ibFlags.docBackground || 'parchment',
+      // Book fields
+      pdfPath: ibFlags.pdfPath || '',
     };
     return data;
   }
@@ -585,6 +591,23 @@ export class CustomDrawingSheet extends DrawingConfig {
       });
     }
 
+    // PDF file picker (book notes)
+    const pdfPickerButton = this.element.querySelector('.pdf-picker-button');
+    if (pdfPickerButton) {
+      pdfPickerButton.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        const input = this.element.querySelector("input[name='pdfPath']");
+        // FilePicker doesn't have a 'pdf' type, so we use 'any' and filter by extension
+        new FilePicker({
+          type: 'any',
+          current: input?.value || '',
+          callback: async (path) => {
+            if (input) input.value = path;
+          },
+        }).render(true);
+      });
+    }
+
     // Hook up file picker button
     const filePickerButton = this.element.querySelector('.file-picker-button');
     if (filePickerButton) {
@@ -821,12 +844,16 @@ export class CustomDrawingSheet extends DrawingConfig {
             updates[`flags.${MODULE_ID}.docBackground`] = data.docBackground || 'parchment';
           }
 
+          if (noteType === 'book') {
+            updates[`flags.${MODULE_ID}.pdfPath`] = data.pdfPath || '';
+          }
+
           if (data.linkedObject !== undefined) {
             updates[`flags.${MODULE_ID}.linkedObject`] = data.linkedObject;
           }
 
-          // Save font and fontSize to note flags (skip for handouts and pins)
-          if (noteType !== 'handout' && noteType !== 'pin') {
+          // Save font and fontSize to note flags (skip for handouts, pins, and books)
+          if (noteType !== 'handout' && noteType !== 'pin' && noteType !== 'book') {
             if (data.font !== undefined) {
               updates[`flags.${MODULE_ID}.font`] = data.font;
             }

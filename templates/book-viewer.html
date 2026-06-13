@@ -1,0 +1,40 @@
+<div class="ib-book-viewer" tabindex="0">
+
+  {{#if pdfPath}}
+    <!-- Navigation: Previous -->
+    <button class="ib-book-nav ib-book-prev" title="Previous page">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+
+    <!-- Book Spread Area -->
+    <div class="ib-book-spread">
+      <div class="ib-book-page ib-book-page-left">
+        <canvas class="ib-page-canvas" data-side="left"></canvas>
+      </div>
+      <div class="ib-book-spine"></div>
+      <div class="ib-book-page ib-book-page-right">
+        <canvas class="ib-page-canvas" data-side="right"></canvas>
+      </div>
+    </div>
+
+    <!-- Navigation: Next -->
+    <button class="ib-book-nav ib-book-next" title="Next page">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+
+    <!-- Page Indicator -->
+    <div class="ib-book-footer">
+      <span class="ib-page-info">
+        Page <input type="number" class="ib-page-jump" min="1" value="1"> of <span class="ib-total-pages">?</span>
+      </span>
+    </div>
+
+  {{else}}
+    <div class="ib-book-empty">
+      <i class="fas fa-book"></i>
+      <p>No PDF file linked to this note.</p>
+      <p class="hint">Open the note editor to attach a PDF.</p>
+    </div>
+  {{/if}}
+
+</div>

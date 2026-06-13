@@ -4,6 +4,7 @@ import { collaborativeUpdate, collaborativeDelete, socket, activeGlobalSounds, a
 import { truncateText, resolvePinImage, getAvailablePinFiles, resolveStampImage, getAvailableStampFiles, openLinkedDocument } from "../utils/helpers.js";
 import { NotePreviewer } from "../apps/note-previewer.js";
 import { VideoPlayer } from "../apps/video-player.js";
+import { BookViewer } from "../apps/book-viewer.js";
 import { drawAllConnectionLines, beginConnectionFrom, resetPinConnectionState } from "./connection-manager.js";
 
 // v13 namespaced imports
@@ -219,9 +220,12 @@ export class CustomDrawing extends Drawing {
     const noteData = this.document.flags?.[MODULE_ID];
     if (noteData?.type === "pin") return;
     if (noteData?.type) {
-      // Route video media notes to VideoPlayer, everything else to NotePreviewer
+      // Route video media notes to VideoPlayer, book notes to BookViewer,
+      // everything else to NotePreviewer
       if (noteData.type === "media" && noteData.videoPath) {
         new VideoPlayer(this.document).render(true);
+      } else if (noteData.type === "book") {
+        new BookViewer(this.document).render(true);
       } else {
         new NotePreviewer(this.document).render(true);
       }
@@ -693,6 +697,19 @@ export class CustomDrawing extends Drawing {
       }
     }
 
+    // Book-specific options
+    if (noteData.type === "book") {
+      const viewBookOption = document.createElement('div');
+      viewBookOption.innerHTML = '<i class="fas fa-book-open"></i> Open Book';
+      viewBookOption.classList.add('ib-context-menu-item');
+      viewBookOption.onclick = (e) => {
+        e.stopPropagation();
+        new BookViewer(this.document).render(true);
+        menu.remove();
+      };
+      menu.appendChild(viewBookOption);
+    }
+
     const viewOption = document.createElement('div');
     viewOption.innerHTML = '<i class="fas fa-magnifying-glass"></i> View';
     viewOption.classList.add('ib-context-menu-item');
@@ -700,6 +717,8 @@ export class CustomDrawing extends Drawing {
       e.stopPropagation();
       if (isVideoMedia) {
         new VideoPlayer(this.document).render(true);
+      } else if (noteData.type === "book") {
+        new BookViewer(this.document).render(true);
       } else {
         new NotePreviewer(this.document).render(true);
       }
@@ -818,7 +837,7 @@ export class CustomDrawing extends Drawing {
       }
     };
 
-    const STAMPABLE_TYPES = ["photo", "document", "index", "handout"];
+    const STAMPABLE_TYPES = ["photo", "document", "index", "handout", "book"];
     if (STAMPABLE_TYPES.includes(noteData.type)) {
       const STAMP_LABELS = {
         'classified.webp': 'Classified',
@@ -1016,7 +1035,7 @@ export class CustomDrawing extends Drawing {
   }
 
   async _loadStampTexture(noteData) {
-    const STAMPABLE_TYPES = ["photo", "document", "index", "handout"];
+    const STAMPABLE_TYPES = ["photo", "document", "index", "handout", "book"];
     const stamp = noteData.stamp;
 
     if (!STAMPABLE_TYPES.includes(noteData.type) || !stamp?.key) {
@@ -1344,6 +1363,150 @@ export class CustomDrawing extends Drawing {
       return; // Early exit for document notes
     }
 
+    // BOOK NOTE LAYOUT (PDF first page as thumbnail)
+    if (noteData.type === "book") {
+      const bookW = this.document.shape.width || 595;
+      const bookH = this.document.shape.height || 842;
+
+      // Destroy document-only sprites
+      if (this.docTitleText && !this.docTitleText.destroyed) {
+        this.shape.removeChild(this.docTitleText);
+        this.docTitleText.destroy();
+        this.docTitleText = null;
+      }
+      if (this.docBodyText && !this.docBodyText.destroyed) {
+        this.shape.removeChild(this.docBodyText);
+        this.docBodyText.destroy();
+        this.docBodyText = null;
+      }
+
+      // Use photoImageSprite for the PDF thumbnail (same pattern as handout)
+      if (!this.photoImageSprite || !this.photoImageSprite.parent) {
+        if (this.photoImageSprite) this.photoImageSprite.destroy();
+        this.photoImageSprite = new PIXI.Sprite();
+        this.shape.addChild(this.photoImageSprite);
+      }
+
+      // Shadow
+      if (!this.bgShadow) {
+        this.bgShadow = new PIXI.Sprite();
+        this.shape.addChildAt(this.bgShadow, 0);
+      }
+
+      // Render PDF first page to an offscreen canvas, then use as PIXI texture.
+      // Cache by pdfPath to avoid re-rendering on every refresh.
+      const pdfPath = noteData.pdfPath;
+      if (pdfPath && pdfPath !== this._ibCachedPdfPath) {
+        try {
+          const pdfjsLib = await import("../lib/pdfjs/pdf.min.mjs");
+          pdfjsLib.GlobalWorkerOptions.workerSrc = "modules/investigation-board/scripts/lib/pdfjs/pdf.worker.min.mjs";
+
+          const url = foundry.utils.getRoute(pdfPath);
+          const pdfDoc = await pdfjsLib.getDocument(url).promise;
+          const page = await pdfDoc.getPage(1);
+
+          const viewport = page.getViewport({ scale: 1 });
+          const scale = Math.min(bookW / viewport.width, bookH / viewport.height);
+          const scaledViewport = page.getViewport({ scale });
+
+          const offscreen = document.createElement("canvas");
+          offscreen.width = scaledViewport.width;
+          offscreen.height = scaledViewport.height;
+          const ctx = offscreen.getContext("2d");
+          await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+
+          const texture = PIXI.Texture.from(offscreen);
+          this._ibCachedPdfPath = pdfPath;
+          this._ibCachedPdfTexture = texture;
+
+          pdfDoc.destroy();
+        } catch (err) {
+          console.error("Investigation Board: Failed to render PDF thumbnail", err);
+        }
+      }
+
+      // Apply the cached texture (or a blank white rect if no PDF set)
+      const texture = this._ibCachedPdfTexture;
+      if (texture && this.photoImageSprite && !this.photoImageSprite.destroyed) {
+        this.photoImageSprite.texture = texture;
+
+        // Scale to fit within bookW × bookH while maintaining aspect ratio
+        const texRatio = texture.width / texture.height;
+        const noteRatio = bookW / bookH;
+        if (texRatio > noteRatio) {
+          this.photoImageSprite.width = bookW;
+          this.photoImageSprite.height = bookW / texRatio;
+        } else {
+          this.photoImageSprite.height = bookH;
+          this.photoImageSprite.width = bookH * texRatio;
+        }
+        this.photoImageSprite.position.set(
+          (bookW - this.photoImageSprite.width) / 2,
+          (bookH - this.photoImageSprite.height) / 2
+        );
+        this.photoImageSprite.visible = true;
+        this.photoImageSprite.alpha = 1;
+      } else if (this.photoImageSprite) {
+        // No PDF yet — show a light background
+        this.photoImageSprite.texture = PIXI.Texture.WHITE;
+        this.photoImageSprite.width = bookW;
+        this.photoImageSprite.height = bookH;
+        this.photoImageSprite.position.set(0, 0);
+        this.photoImageSprite.tint = 0xf5f5f0;
+        this.photoImageSprite.visible = true;
+      }
+
+      // Shadow uses the same sprite dimensions
+      if (this.bgShadow && !this.bgShadow.destroyed && this.photoImageSprite) {
+        this.bgShadow.texture = this.photoImageSprite.texture;
+        this.bgShadow.width = this.photoImageSprite.width;
+        this.bgShadow.height = this.photoImageSprite.height;
+        this.bgShadow.position.set(
+          this.photoImageSprite.x + 8,
+          this.photoImageSprite.y + 8
+        );
+        try { this.bgShadow.tint = 0x000000; } catch (e) {}
+        this.bgShadow.alpha = 0.35;
+        this.bgShadow.filters = [new PIXI.BlurFilter(4)];
+      }
+
+      // Optional title text below the thumbnail
+      const labelText = noteData.text || "";
+      if (labelText) {
+        const font = noteData.font || game.settings.get(MODULE_ID, "font");
+        const baseFontSize = 16;
+        const fontBoost = font === "Caveat" ? 1.6 : 1.0;
+        const fontSize = (bookW / 595) * baseFontSize * fontBoost;
+        const textStyle = new PIXI.TextStyle({
+          fontFamily: font,
+          fontSize,
+          fill: "#333333",
+          wordWrap: true,
+          wordWrapWidth: bookW - 20,
+          align: "center",
+        });
+        if (!this.noteText || this.noteText.destroyed) {
+          this.noteText = new PIXI.Text(labelText, textStyle);
+          this.noteText.anchor.set(0.5, 0);
+          this.shape.addChild(this.noteText);
+        } else {
+          this.noteText.style = textStyle;
+          this.noteText.text = labelText;
+          this.noteText.anchor.set(0.5, 0);
+        }
+        this.noteText.position.set(bookW / 2, bookH + 10);
+        this.noteText.visible = true;
+      } else {
+        if (this.noteText) this.noteText.visible = false;
+      }
+
+      // Pin
+      await this._loadPinTexture(noteData);
+      // Stamp
+      await this._loadStampTexture(noteData);
+      return; // Early exit for book notes
+    }
+
     // PIN ONLY LAYOUT
     if (noteData.type === "pin") {
       // No background for pin-only
@@ -1653,6 +1816,13 @@ export class CustomDrawing extends Drawing {
       return {
         x: this.document.x + noteWidth / 2,
         y: this.document.y + noteHeight * 0.05 + 20
+      };
+    }
+
+    if (noteData.type === "book") {
+      return {
+        x: this.document.x + noteWidth / 2,
+        y: this.document.y + 23
       };
     }
 

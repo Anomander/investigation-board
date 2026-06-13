@@ -194,6 +194,14 @@ Hooks.on("getSceneControlButtons", (controls) => {
       button: true
     };
 
+    controls.drawings.tools.createBookNote = {
+      name: "createBookNote",
+      title: "Create Book Note",
+      icon: "fas fa-book-open",
+      onChange: () => createNote("book"),
+      button: true
+    };
+
     controls.drawings.tools.createPinOnly = {
       name: "createPinOnly",
       title: "Create Pin Only",
@@ -590,13 +598,16 @@ Hooks.on("updateDrawing", async (drawing, changes, options, userId) => {
     if (needsRefresh) {
       await placeable.refresh();
 
-      // Re-render open NotePreviewer or VideoPlayer when note content changes
+      // Re-render open NotePreviewer, VideoPlayer, or BookViewer when note content changes
       if (flagsChanged) {
         const previewApp = foundry.applications.instances.get(`note-preview-${drawing.id}`);
         if (previewApp) previewApp.render();
 
         const videoApp = foundry.applications.instances.get(`video-player-${drawing.id}`);
         if (videoApp) videoApp.render();
+
+        const bookApp = foundry.applications.instances.get(`book-viewer-${drawing.id}`);
+        if (bookApp) bookApp.render();
       }
     }
   }

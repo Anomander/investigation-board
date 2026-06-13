@@ -154,7 +154,7 @@ export class VideoPlayer extends HandlebarsApplicationMixin(ApplicationV2) {
           .then(() => {
             overlay.classList.remove('visible');
           })
-          .catch(() => {});
+          .catch(() => { });
       });
     }
 
@@ -278,7 +278,7 @@ export class VideoPlayer extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // ---- Mechanical sound ----
     if (effects.mechanicalSound && format?.mechanicalSfx) {
-      game.audio.play(format.mechanicalSfx, { volume: 0.6 }).catch(() => {});
+      game.audio.play(format.mechanicalSfx, { volume: 0.6 }).catch(() => { });
     }
 
     // ---- Timestamp: needs base date to activate ----

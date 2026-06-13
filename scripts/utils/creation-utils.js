@@ -101,6 +101,7 @@ export async function createNote(noteType, { x = null, y = null } = {}) {
                 : noteType === "media" ? mediaW
                 : noteType === "pin" ? pinW
                 : noteType === "document" ? docW
+                : noteType === "book" ? docW
                 : stickyW;
   // Media notes start as audio (cassette) by default; height updates if user sets a videoPath
   const height = noteType === "photo" ? Math.round(photoW / (225 / 290))
@@ -109,6 +110,7 @@ export async function createNote(noteType, { x = null, y = null } = {}) {
                  : noteType === "media" ? Math.round(mediaW * 0.74)
                  : noteType === "pin" ? pinW
                  : noteType === "document" ? docH
+                 : noteType === "book" ? docH
                  : stickyW;
 
   // Final coordinates
@@ -133,7 +135,7 @@ export async function createNote(noteType, { x = null, y = null } = {}) {
   }
 
   // Get default text from settings (fallback if missing)
-  const defaultText = (noteType === "handout" || noteType === "pin" || noteType === "document")
+  const defaultText = (noteType === "handout" || noteType === "pin" || noteType === "document" || noteType === "book")
                     ? ""
                     : (game.settings.get(MODULE_ID, `${noteType}NoteDefaultText`) || "Notes");
 
@@ -163,6 +165,11 @@ export async function createNote(noteType, { x = null, y = null } = {}) {
     extraFlags.title = "";
   }
 
+  // Set defaults for book notes
+  if (noteType === "book") {
+    extraFlags.pdfPath = "";
+  }
+
   // Set default image for media notes (audio/cassette default; swaps to VHS when videoPath is set)
   if (noteType === "media") {
     extraFlags.image = getRandomCassetteImage();
@@ -177,7 +184,7 @@ export async function createNote(noteType, { x = null, y = null } = {}) {
     y: finalY,
     shape: { width, height },
     fillColor: "#000000",
-    fillAlpha: (noteType === "handout" || noteType === "media" || noteType === "pin") ? 0.001 : 1,
+    fillAlpha: (noteType === "handout" || noteType === "media" || noteType === "pin" || noteType === "book") ? 0.001 : 1,
     strokeColor: "#000000",
     strokeWidth: 0,
     strokeAlpha: 0,
