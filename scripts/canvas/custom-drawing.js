@@ -534,6 +534,7 @@ export class CustomDrawing extends Drawing {
         { id: 'index', label: 'Index Card', icon: 'fa-regular fa-subtitles' },
         { id: 'handout', label: 'Handout', icon: 'fas fa-image' },
         { id: 'media', label: 'Media Note', icon: 'fas fa-cassette-tape' },
+        { id: 'book', label: 'Book Note', icon: 'fas fa-book-open' },
       ];
       convertTypes.forEach(ct => {
         const convertOption = document.createElement('div');
@@ -550,6 +551,26 @@ export class CustomDrawing extends Drawing {
       const sep3 = document.createElement('div');
       sep3.classList.add('ib-context-separator');
       menu.appendChild(sep3);
+
+      // ── Visibility ──────────────────────────────────────────────────────────
+      if (game.user.isGM) {
+        const isHidden = this.document.hidden;
+        const toggleVisOption = document.createElement('div');
+        toggleVisOption.innerHTML = isHidden
+          ? '<i class="fas fa-eye"></i> Reveal to Players'
+          : '<i class="fas fa-eye-slash"></i> Hide from Players';
+        toggleVisOption.classList.add('ib-context-menu-item');
+        toggleVisOption.onclick = async (e) => {
+          e.stopPropagation();
+          menu.remove();
+          await this.document.update({ hidden: !isHidden });
+        };
+        menu.appendChild(toggleVisOption);
+
+        const sepVis = document.createElement('div');
+        sepVis.classList.add('ib-context-separator');
+        menu.appendChild(sepVis);
+      }
 
       // ── Delete ───────────────────────────────────────────────────────────────
       const deleteOption = document.createElement('div');
