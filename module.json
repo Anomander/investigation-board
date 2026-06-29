@@ -2,7 +2,7 @@
   "id": "investigation-board",
   "title": "Investigation Board",
   "description": "<p>A Foundry VTT module that lets everyone create, edit, and move sticky and photo notes on the scene as collaborative investigation tools.</p>",
-  "version": "5.8.1.c",
+  "version": "5.8.1.d",
   "socket": true,
   "authors": [
     {
@@ -48,7 +48,7 @@
     }
   ],
   "url": "https://github.com/Anomander/investigation-board",
-  "manifest": "https://github.com/Anomander/investigation-board/releases/download/v5.8.1.b/module.json",
-  "download": "https://github.com/Anomander/investigation-board/releases/download/v5.8.1.b/module.zip",
+  "manifest": "https://github.com/Anomander/investigation-board/releases/download/v5.8.1.d/module.json",
+  "download": "https://github.com/Anomander/investigation-board/releases/download/v5.8.1.d/module.zip",
   "flags": {}
 }
