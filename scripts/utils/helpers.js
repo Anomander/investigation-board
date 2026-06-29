@@ -220,15 +220,52 @@ export function truncateText(text, font, noteType, fontSize, width, height) {
  * Open a linked Foundry document, respecting sheet overrides from modules such
  * as Monk's Enhanced Journal (MEJ).
  *
- * MEJ registers itself as the sheet class for JournalEntry documents.  When a
+ * MEJ registers itself as the sheet class for JournalEntry documents. When a
  * linkedObject UUID resolves to a JournalEntryPage, calling page.sheet.render()
  * opens the vanilla page editor instead of MEJ because MEJ does not hook the
- * JournalEntryPage sheet class.  Routing through the parent JournalEntry sheet
+ * JournalEntryPage sheet class. Routing through the parent JournalEntry sheet
  * (with pageId forwarded) fixes this transparently.
+ *
+ * If MEJ is active and the document is a Journal document, we route it through
+ * MEJ's custom routing/UI handling to ensure custom types like Picture show properly.
  *
  * @param {Document} doc   A resolved Foundry document (any type).
  */
-export function openLinkedDocument(doc) {
+export async function openLinkedDocument(doc) {
+  // If MEJ is active, route JournalEntry/JournalEntryPage documents through its API
+  if (game.modules.get("monks-enhanced-journal")?.active && game.MonksEnhancedJournal) {
+    let entry = null;
+    const options = {};
+
+    if (doc.documentName === "JournalEntryPage" && doc.parent) {
+      entry = doc.parent;
+      options.pageId = doc.id;
+    } else if (doc.documentName === "JournalEntry") {
+      entry = doc;
+    }
+
+    if (entry) {
+      try {
+        // Try routing through MEJ's openJournalEntry first (respects its tabs/UI settings)
+        const handled = await game.MonksEnhancedJournal.openJournalEntry(entry, options);
+        if (handled) return;
+
+        // If MEJ returns false (e.g. settings configure opening outside), fallback to rendering.
+        // We must fix the page type first so MEJ's custom sheet classes (like PictureSheet) resolve.
+        if (doc.documentName === "JournalEntryPage") {
+          if (typeof game.MonksEnhancedJournal.fixType === "function") {
+            game.MonksEnhancedJournal.fixType(doc);
+          }
+          doc.sheet.render(true);
+          return;
+        }
+      } catch (err) {
+        console.error("Investigation Board: Error routing document through Monk's Enhanced Journal", err);
+      }
+    }
+  }
+
+  // Default fallback behavior
   if (doc.documentName === "JournalEntryPage" && doc.parent) {
     doc.parent.sheet.render(true, { pageId: doc.id });
   } else {

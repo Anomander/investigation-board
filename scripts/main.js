@@ -150,6 +150,46 @@ function _getPlaylistSoundFromLi(li) {
   return null;
 }
 
+/**
+ * Ensures that if a drawing note is visible to players and has a linked journal entry,
+ * the journal entry's default permission is upgraded to OBSERVER.
+ * @param {DrawingDocument} drawing
+ */
+async function _ensureLinkedJournalVisible(drawing) {
+  if (!game.user.isGM) return;
+  const noteData = drawing.flags?.[MODULE_ID];
+  if (!noteData?.linkedObject) return;
+  if (drawing.hidden) return;
+
+  const linkMatch = noteData.linkedObject.match(/\[([^\]]+)\]/);
+  if (!linkMatch) return;
+
+  const uuid = linkMatch[1];
+  try {
+    const doc = await fromUuid(uuid);
+    if (!doc) return;
+
+    let journalEntry = null;
+    if (doc.documentName === "JournalEntry") {
+      journalEntry = doc;
+    } else if (doc.documentName === "JournalEntryPage") {
+      journalEntry = doc.parent;
+    }
+    if (journalEntry) {
+      const levels = foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS;
+      const currentDefault = journalEntry.ownership?.default ?? levels.NONE;
+      if (currentDefault < levels.OBSERVER) {
+        await journalEntry.update({
+          "ownership.default": levels.OBSERVER
+        });
+        ui.notifications.info(`Investigation Board: Upgraded permissions for journal entry "${journalEntry.name}" to Observer.`);
+      }
+    }
+  } catch (err) {
+    console.error("Investigation Board: Error updating linked journal permissions", err);
+  }
+}
+
 Hooks.on("getSceneControlButtons", (controls) => {
   // Add Investigation Board tools to the existing drawings control
   if (controls.drawings && controls.drawings.tools) {
@@ -521,6 +561,11 @@ Hooks.on("createDrawing", (drawing, options, userId) => {
       refreshDrawingsInteractivity();
     }, 300);
   }
+
+  // Ensure linked journal entry is visible if note is visible
+  if (game.user.isGM && !drawing.hidden) {
+    _ensureLinkedJournalVisible(drawing);
+  }
 });
 
 // Hook to intercept drawing updates and route through socket if user lacks permission
@@ -617,6 +662,11 @@ Hooks.on("updateDrawing", async (drawing, changes, options, userId) => {
   if (changes.x !== undefined || changes.y !== undefined || flagsChanged || shapeChanged || changes.hidden !== undefined) {
     updatePins();
     drawAllConnectionLines();
+  }
+
+  // Ensure linked journal entry is visible if note is made visible or linked object changes
+  if (game.user.isGM && (changes.hidden === false || flagsChanged)) {
+    _ensureLinkedJournalVisible(drawing);
   }
 });
 

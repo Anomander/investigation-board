@@ -316,7 +316,7 @@ export class CustomDrawing extends Drawing {
               const doc = await fromUuid(uuid);
               if (doc) {
                 if (doc.testUserPermission(game.user, "LIMITED")) {
-                  openLinkedDocument(doc);
+                  await openLinkedDocument(doc);
                 } else {
                   ui.notifications.warn(`You do not have permission to view ${doc.name}.`);
                 }
@@ -824,7 +824,7 @@ export class CustomDrawing extends Drawing {
             const doc = await fromUuid(uuid);
             if (doc) {
               if (doc.testUserPermission(game.user, "LIMITED")) {
-                openLinkedDocument(doc);
+                await openLinkedDocument(doc);
               } else {
                 ui.notifications.warn(`You do not have permission to view ${doc.name}.`);
               }
